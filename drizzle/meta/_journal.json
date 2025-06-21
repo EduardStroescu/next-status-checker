@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "singlestore",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "1",
+      "when": 1739530385458,
+      "tag": "0000_open_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "1",
+      "when": 1739535723402,
+      "tag": "0001_dapper_blue_shield",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "1",
+      "when": 1739545376387,
+      "tag": "0002_superb_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "1",
+      "when": 1750452620550,
+      "tag": "0003_flimsy_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "1",
+      "when": 1750453824059,
+      "tag": "0004_tired_eternals",
+      "breakpoints": true
+    }
+  ]
+}
