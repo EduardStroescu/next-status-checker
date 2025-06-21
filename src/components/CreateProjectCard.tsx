@@ -30,18 +30,14 @@ import { createProjectAction } from "@/lib/server/actions";
 
 const createProjectSchema = z.object({
   name: z.string({ error: "A project name is required" }).min(1),
-  url: z
-    .string()
-    .transform((val) => (val === "" ? null : val))
-    .optional()
-    .nullable(),
+  url: z.url(),
   healthCheckUrl: z
-    .string()
+    .url()
     .transform((val) => (val === "" ? null : val))
     .optional()
     .nullable(),
   image: z
-    .string()
+    .url()
     .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
