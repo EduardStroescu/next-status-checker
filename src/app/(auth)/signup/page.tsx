@@ -51,7 +51,7 @@ export default function SignupPage() {
       avatar: "",
     },
   });
-  const avatar = watch("avatar");
+  const [avatar, username] = watch(["avatar", "username"]);
 
   const onSubmit: SubmitHandler<z.infer<typeof signupSchema>> = async (data) =>
     await signUp(data);
@@ -79,6 +79,8 @@ export default function SignupPage() {
             id="email"
             autoComplete="email"
             placeholder="John.Doe@example.com"
+            disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
+            aria-disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
           />
         </div>
         <div className="space-y-2 flex flex-col items-center">
@@ -88,6 +90,8 @@ export default function SignupPage() {
             id="username"
             autoComplete="username"
             placeholder="John"
+            disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
+            aria-disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
           />
         </div>
 
@@ -99,6 +103,7 @@ export default function SignupPage() {
             id="password"
             autoComplete="current-password"
             placeholder="Enter your password"
+            disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
           />
         </div>
 
@@ -113,6 +118,8 @@ export default function SignupPage() {
               id="avatar"
               placeholder="https://example.com/image.png"
               className="pl-10"
+              disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
+              aria-disabled={!!env.NEXT_PUBLIC_SIGNUP_CLOSED}
             />
           </div>
           {errors.avatar && (
@@ -131,12 +138,13 @@ export default function SignupPage() {
                 }
                 className="data-[loaded=false]:animate-pulse data-[loaded=false]:bg-gray-500/40"
               />
-              <AvatarFallback>UI</AvatarFallback>
+              <AvatarFallback>{username?.slice(0, 1)}</AvatarFallback>
             </Avatar>
           )}
         </div>
         <Button
-          disabled={isSubmitting}
+          disabled={isSubmitting || !!env.NEXT_PUBLIC_SIGNUP_CLOSED}
+          aria-disabled={isSubmitting || !!env.NEXT_PUBLIC_SIGNUP_CLOSED}
           variant="secondary"
           type="submit"
           className="rounded-full"

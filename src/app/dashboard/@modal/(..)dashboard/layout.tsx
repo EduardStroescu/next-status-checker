@@ -1,5 +1,6 @@
 import MaximizeModal from "@/components/MaximizeModal";
 import { Modal } from "@/components/Modal";
+import { Suspense } from "react";
 
 export default function ModalLayout({
   children,
@@ -8,7 +9,9 @@ export default function ModalLayout({
 }) {
   return (
     <Modal>
-      <MaximizeModal />
+      <Suspense fallback={null}>
+        <MaximizeModal />
+      </Suspense>
       {children}
     </Modal>
   );

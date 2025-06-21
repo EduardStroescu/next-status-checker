@@ -18,7 +18,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild aria-label="Go to">
               <Link href="/dashboard">
                 <div className="text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <Image src="/favicon.png" alt="Logo" width={32} height={32} />

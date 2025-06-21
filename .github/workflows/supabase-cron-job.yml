@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Send keep-alive request
         run: |
-          curl --fail --retry 10 -X GET "${{ secrets.KEEP_ALIVE_URL }}?ownerId=${{ secrets.OWNER_ID }}"
+          curl --fail --retry 10 -X POST "${{ secrets.KEEP_ALIVE_URL }}?ownerId=${{ secrets.OWNER_ID }}"

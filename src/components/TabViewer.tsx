@@ -41,11 +41,10 @@ export default function TabViewer({ projects }: TabViewerProps) {
     newSearchParams.set("tab", tab.toLowerCase());
 
     window.history.replaceState(null, "", `?${newSearchParams.toString()}`);
-    router.refresh();
   };
 
   return (
-    <div>
+    <div className="h-full">
       <div className="rounded-t-2xl bg-background flex justify-center items-center p-2 gap-2 flex-wrap overflow-hidden">
         <ToggleGroup
           type="single"
@@ -72,6 +71,7 @@ export default function TabViewer({ projects }: TabViewerProps) {
           size="icon"
           className="group/refresh"
           disabled={isPending}
+          aria-label="Refresh projects"
         >
           <RefreshIcon
             className={`${
@@ -79,7 +79,12 @@ export default function TabViewer({ projects }: TabViewerProps) {
             } size-7 group-hover/refresh:rotate-360 group-hover/refresh:transition-transform duration-[900ms]`}
           />
         </Button>
-        <Button variant="ghost" size="icon" asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          aria-label="Create new project"
+        >
           <Link href={`/dashboard/create?tab=${currentTabFromQuery}`}>
             <CirclePlus className="size-7 stroke-1" />
           </Link>

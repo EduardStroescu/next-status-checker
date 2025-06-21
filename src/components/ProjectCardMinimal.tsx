@@ -89,6 +89,7 @@ export default function ProjectCardMinimal({
                 {project.name}
               </h3>
               <Button
+                aria-label="Refresh project"
                 onClick={() =>
                   refreshIndividualProjectAction(project.id, project.category)
                 }
@@ -101,6 +102,7 @@ export default function ProjectCardMinimal({
             </div>
             <div className="flex items-center gap-2">
               <Button
+                aria-label="Copy URL"
                 variant="default"
                 size="sm"
                 onClick={handleCopyUrl}
@@ -109,7 +111,7 @@ export default function ProjectCardMinimal({
                 {copied ? <Check className="text-green-500" /> : <Copy />}
                 <span className="sr-only">Copy URL</span>
               </Button>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild aria-label="Open URL">
                 <a
                   href={project.url!}
                   target="_blank"

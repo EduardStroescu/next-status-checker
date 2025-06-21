@@ -59,7 +59,6 @@ export default function NavMain({
     if (pathname !== "/dashboard")
       return router.push(`/dashboard?${params.toString()}`);
     window.history.replaceState(null, "", `/dashboard?${params.toString()}`);
-    router.refresh();
   };
 
   return (
@@ -75,7 +74,7 @@ export default function NavMain({
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.name}>
+                <SidebarMenuButton tooltip={item.name} className="w-full">
                   {(() => {
                     const Icon = CATEGORY_ICONS[item.name.toLowerCase()];
                     return Icon ? <Icon /> : null;
@@ -84,6 +83,7 @@ export default function NavMain({
                     href={`/dashboard?tab=${item.url}`}
                     onClick={(e) => e.stopPropagation()}
                     onNavigate={(e) => handleParamNavigation(e, item.url)}
+                    className="w-full py-2"
                   >
                     {item.name}
                   </Link>

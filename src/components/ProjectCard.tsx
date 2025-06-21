@@ -134,6 +134,7 @@ export default function ProjectCard({
                 {project.name}
               </h3>
               <Button
+                aria-label="Refresh project"
                 onClick={() =>
                   refreshIndividualProjectAction(project.id, project.category)
                 }
@@ -150,7 +151,7 @@ export default function ProjectCard({
                 setOpen={setEditModalOpen}
                 project={project}
               >
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" aria-label="Edit project">
                   <Edit />
                   <span className="sr-only">Edit project</span>
                 </Button>
@@ -159,6 +160,7 @@ export default function ProjectCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => deleteProject(project.id)}
+                aria-label="Delete project"
               >
                 <Trash />
                 <span className="sr-only">Delete project</span>
@@ -196,12 +198,13 @@ export default function ProjectCard({
                   size="sm"
                   onClick={handleCopyUrl}
                   className="h-6 w-6 p-0 shrink-0"
+                  aria-label="Copy URL"
                 >
                   {copied ? <Check className="text-green-500" /> : <Copy />}
                   <span className="sr-only">Copy URL</span>
                 </Button>
               </div>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild aria-label="Open URL">
                 <a
                   href={project.url!}
                   target="_blank"

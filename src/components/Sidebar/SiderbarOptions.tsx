@@ -4,6 +4,7 @@ import NavMain from "./NavMain";
 import { NavUser } from "./SidebarUser";
 import { groupProjectsByCategory } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/server/helpers";
+import { Suspense } from "react";
 
 export async function SidebarOptions() {
   const response = await fetchAllProjects();
@@ -20,13 +21,13 @@ export async function SidebarOptions() {
   };
 
   return (
-    <>
+    <Suspense fallback={null}>
       <SidebarContent>
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={navUser} />
       </SidebarFooter>
-    </>
+    </Suspense>
   );
 }

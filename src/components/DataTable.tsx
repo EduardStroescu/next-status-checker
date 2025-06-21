@@ -46,7 +46,7 @@ export const schema = z.object({
 const Cell = ({ row }: { row: Row<z.infer<typeof schema>> }) => {
   const isMobile = useIsMobile();
   return (
-    <div className="w-32">
+    <div className="w-22">
       <p className="text-muted-foreground px-1.5">
         {row.original.lastChecked.toLocaleString("en-US", {
           timeZone: "Europe/Bucharest",
@@ -66,6 +66,9 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       return (
         <Button
           variant="ghost"
+          aria-label={
+            column.getIsSorted() ? "Sort ascending" : "Sort descending"
+          }
           className={`${
             !column.getIsSorted()
               ? ""
@@ -93,6 +96,9 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       return (
         <Button
           variant="ghost"
+          aria-label={
+            column.getIsSorted() ? "Sort descending" : "Sort ascending"
+          }
           className={`${
             !column.getIsSorted()
               ? ""
@@ -127,9 +133,9 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 
 function TblRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   return (
-    <TableRow className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80">
+    <TableRow className="relative z-0">
       {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
+        <TableCell key={cell.id} className="px-2 md:px-4">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}
@@ -171,7 +177,11 @@ export function DataTable({ data }: { data: z.infer<typeof schema>[] }) {
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className="px-0 md:px-2"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
