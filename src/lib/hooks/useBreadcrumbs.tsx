@@ -10,7 +10,7 @@ export function useBreadcrumbs() {
   const currentTabFromQuery = searchParams.get("tab") ?? "supabase";
   const crumbs = getBreadcrumbs(pathname);
   const isActualProjectIdx = crumbs.findIndex(
-    (crumb) => !Number.isNaN(parseInt(crumb.label))
+    (crumb) => !isNaN(Number(crumb.label))
   );
 
   const { data: project } = useQuery({

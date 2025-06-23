@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { ForwardRefExoticComponent, RefAttributes } from "react";
-import { Project } from "@/lib/types";
+import { SafeProject } from "@/lib/types";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const CATEGORY_ICONS: Record<
@@ -40,7 +40,7 @@ export default function NavMain({
     name: string;
     url: string;
     isActive?: boolean;
-    items?: Project[];
+    items?: (SafeProject & { internalURL: string })[];
   }[];
 }) {
   const searchParams = useSearchParams();
@@ -96,7 +96,9 @@ export default function NavMain({
                     <SidebarMenuSubItem key={subItem.name}>
                       <SidebarMenuSubButton asChild>
                         <Link
-                          href={`${subItem.url}?${searchParams.toString()}`}
+                          href={`${
+                            subItem.internalURL
+                          }?${searchParams.toString()}`}
                         >
                           <span>{subItem.name}</span>
                         </Link>

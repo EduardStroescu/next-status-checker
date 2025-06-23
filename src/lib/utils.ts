@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Project, ProjectHistory, ProjectWithHistory } from "./types";
+import { ProjectHistory, ProjectWithHistory, SafeProject } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -36,17 +36,16 @@ export function getBreadcrumbs(pathname: string) {
   return crumbs;
 }
 
-export function groupProjectsByCategory(projects: Project[]) {
-  const grouped = new Map<string, Project[]>();
+export function groupProjectsByCategory(projects: SafeProject[]) {
+  const grouped = new Map<string, (SafeProject & { internalURL: string })[]>();
 
   for (const project of projects) {
-    const category = project.category?.toLowerCase() || "uncategorized";
+    const category = project.category.toLowerCase();
     if (!grouped.has(category)) grouped.set(category, []);
 
     grouped.get(category)!.push({
       ...project,
-      name: project.name,
-      url: `/dashboard/${project.id}`,
+      internalURL: `/dashboard/${project.id}`,
     });
   }
 

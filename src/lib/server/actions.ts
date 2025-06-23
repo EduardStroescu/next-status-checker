@@ -49,7 +49,17 @@ export const fetchAllProjects = async () => {
   if (!user) redirect("/login");
 
   return await getServerDataSafe(() =>
-    db.select().from(projects_table).orderBy(asc(projects_table.name))
+    db
+      .select({
+        id: projects_table.id,
+        name: projects_table.name,
+        url: projects_table.url,
+        category: projects_table.category,
+        enabled: projects_table.enabled,
+        ownerId: projects_table.ownerId,
+      })
+      .from(projects_table)
+      .orderBy(asc(projects_table.name))
   );
 };
 
@@ -73,11 +83,14 @@ export const fetchProject = async (projectId: Project["id"]) => {
         )
       );
 
+    if (!project)
+      throw new CustomError("Project not found", { statusCode: 404 });
+
     return project;
   });
 };
 
-export const fetchProjectWithHistory = async (projectId: Project["id"]) => {
+export const fetchProjectWithHistory = async (projectId: string | number) => {
   const idParse = z.coerce.number().safeParse(projectId);
 
   if (!idParse.success)
@@ -101,6 +114,9 @@ export const fetchProjectWithHistory = async (projectId: Project["id"]) => {
         )
       )
       .orderBy(desc(history_table.lastChecked));
+
+    if (!rows.length)
+      throw new CustomError("Project not found", { statusCode: 404 });
 
     const { project } = rows[0];
 
@@ -217,6 +233,7 @@ export const createProjectAction = async (data: CreateProject) => {
     );
 
   if (!project) throw new CustomError("Could not create project");
+
   if (data.enabled) {
     let reportResult: NewLogData | undefined;
     if (data.category === "supabase") {

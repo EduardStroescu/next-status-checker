@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/drizzle";
 import { decryptAndValidate } from "./edge-only";
 import { NextResponse } from "next/server";
+import * as z from "zod/v4";
 
 // Cached helper methods makes it easy to get the same value in many places
 // without manually passing it around. This discourages passing it from Server
@@ -20,6 +21,10 @@ export const getCurrentUser = cache(async () => {
 
   if (!decodedToken) return null;
 
+  const parsedDecodedToken = z.coerce.number().safeParse(decodedToken.id);
+
+  if (!parsedDecodedToken.success) return null;
+
   const [user] = await db
     .select({
       id: users_table.id,
@@ -29,7 +34,7 @@ export const getCurrentUser = cache(async () => {
       createdAt: users_table.createdAt,
     })
     .from(users_table)
-    .where(eq(users_table.id, parseInt(decodedToken.id)));
+    .where(eq(users_table.id, parsedDecodedToken.data));
 
   return user;
 });

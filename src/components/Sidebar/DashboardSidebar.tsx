@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/sidebar";
 import Image from "next/image";
 import Link from "next/link";
-import { SearchForm } from "./SearchForm";
 import { ReactNode } from "react";
 
 export function AppSidebar({ children }: { children: ReactNode }) {
@@ -32,7 +31,6 @@ export function AppSidebar({ children }: { children: ReactNode }) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SearchForm />
       {children}
     </Sidebar>
   );

@@ -26,6 +26,17 @@ import {
 import EditProjectDialog from "./EditProjectDialog";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./ui/alert-dialog";
 
 export default function ProjectCard({
   project,
@@ -156,15 +167,33 @@ export default function ProjectCard({
                   <span className="sr-only">Edit project</span>
                 </Button>
               </EditProjectDialog>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteProject(project.id)}
-                aria-label="Delete project"
-              >
-                <Trash />
-                <span className="sr-only">Delete project</span>
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" aria-label="Delete project">
+                    <Trash />
+                    <span className="sr-only">Delete project</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Are you absolutely sure?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete
+                      your project and remove its history from our servers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteProject(project.id)}
+                    >
+                      Continue
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
 

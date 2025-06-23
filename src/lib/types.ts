@@ -5,6 +5,14 @@ export type User = typeof users_table.$inferSelect;
 export type SafeUser = Omit<User, "password">;
 
 export type Project = typeof projects_table.$inferSelect;
+export type SafeProject = {
+  id: Project["id"];
+  name: Project["name"];
+  url: Project["url"];
+  category: Project["category"];
+  enabled: Project["enabled"];
+  ownerId: Project["ownerId"];
+};
 export type CreateProject = Omit<typeof projects_table.$inferInsert, "ownerId">;
 export type UpdateProject = Partial<typeof projects_table.$inferInsert>;
 export type NewLogData = Omit<

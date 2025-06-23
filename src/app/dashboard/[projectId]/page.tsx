@@ -11,7 +11,8 @@ export default async function ProjectPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const response = await fetchProjectWithHistory(parseInt(projectId));
+
+  const response = await fetchProjectWithHistory(projectId);
 
   if (!response.success) return <div>Error: {response.message}</div>;
 

@@ -3,6 +3,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
@@ -14,6 +15,11 @@ import { Skeleton } from "./ui/skeleton";
 export default function SidebarSkeleton() {
   return (
     <>
+      <SidebarGroup className="py-0">
+        <SidebarGroupContent className="relative">
+          <Skeleton className="pl-8 pr-12.5 h-8 w-full rounded-full" />
+        </SidebarGroupContent>
+      </SidebarGroup>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>

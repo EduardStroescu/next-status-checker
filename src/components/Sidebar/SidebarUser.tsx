@@ -25,7 +25,7 @@ export function NavUser({
   user: {
     username: string;
     email: string;
-    avatar: string | undefined;
+    avatar: string | null;
   };
 }) {
   const { isMobile } = useSidebar();
@@ -41,7 +41,7 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage
-                  src={user.avatar}
+                  src={user.avatar ?? undefined}
                   alt={user.username + "'s avatar"}
                 />
                 <AvatarFallback className="rounded-full">
@@ -69,7 +69,7 @@ export function NavUser({
                     onLoad={(evt) =>
                       evt.currentTarget.setAttribute("data-loaded", "true")
                     }
-                    src={user.avatar}
+                    src={user.avatar ?? undefined}
                     alt={user.username + "'s avatar"}
                     className="data-[loaded=false]:animate-pulse data-[loaded=false]:bg-gray-500/40"
                   />

@@ -5,6 +5,7 @@ import { NavUser } from "./SidebarUser";
 import { groupProjectsByCategory } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/server/helpers";
 import { Suspense } from "react";
+import { SearchForm } from "./SearchForm";
 
 export async function SidebarOptions() {
   const response = await fetchAllProjects();
@@ -14,19 +15,14 @@ export async function SidebarOptions() {
 
   const navMain = groupProjectsByCategory(response.data);
 
-  const navUser = {
-    username: user.username,
-    email: user.email,
-    avatar: user.avatar ?? undefined,
-  };
-
   return (
     <Suspense fallback={null}>
+      <SearchForm searchItems={navMain} />
       <SidebarContent>
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={navUser} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Suspense>
   );

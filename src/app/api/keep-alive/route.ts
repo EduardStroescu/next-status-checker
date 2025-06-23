@@ -31,17 +31,11 @@ export async function POST(req: NextRequest) {
       getLiveReportForAllApis(ownerId),
     ]);
 
-    setTimeout(() => {
-      Promise.allSettled(
-        results.flatMap((result) =>
-          result.map((project) =>
-            storeLatestStatusResult(project).catch((err) => {
-              console.error("Failed to store:", project.name, err);
-            })
-          )
-        )
-      );
-    }, 0);
+    await Promise.allSettled(
+      results.flatMap((result) =>
+        result.map((project) => storeLatestStatusResult(project))
+      )
+    );
 
     return NextResponse.json(results[0], { status: 200 });
   } catch (err) {
