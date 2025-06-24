@@ -67,7 +67,7 @@ export const fetchProject = async (projectId: Project["id"]) => {
   const idParse = z.coerce.number().safeParse(projectId);
 
   if (!idParse.success)
-    throw new CustomError("No projectId provided", { statusCode: 400 });
+    throw new CustomError("Invalid project id provided", { statusCode: 400 });
 
   const user = await getCurrentUser();
   if (!user) return redirect("/login");
@@ -94,7 +94,7 @@ export const fetchProjectWithHistory = async (projectId: string | number) => {
   const idParse = z.coerce.number().safeParse(projectId);
 
   if (!idParse.success)
-    throw new CustomError("No projectId provided", { statusCode: 400 });
+    throw new CustomError("Invalid project id provided", { statusCode: 400 });
 
   const user = await getCurrentUser();
   if (!user) return redirect("/login");
@@ -187,7 +187,7 @@ export const switchProjectStatus = async (
 ) => {
   const idParse = z.number().safeParse(projectId);
   if (!idParse.success)
-    throw new CustomError("No projectId provided", { statusCode: 400 });
+    throw new CustomError("Invalid project id provided", { statusCode: 400 });
 
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -350,7 +350,7 @@ export const refreshIndividualProjectAction = async (
   const idParse = z.coerce.number().safeParse(projectId);
 
   if (!idParse.success)
-    throw new CustomError("No projectId provided", { statusCode: 400 });
+    throw new CustomError("Invalid project id provided", { statusCode: 400 });
 
   const user = await getCurrentUser();
   if (!user) redirect("/login");

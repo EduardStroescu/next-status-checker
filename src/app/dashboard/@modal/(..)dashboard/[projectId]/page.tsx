@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchProjectWithHistory } from "@/lib/server/actions";
 import ProjectCard from "@/components/ProjectCard";
 import { processHistoryForChart } from "@/lib/utils";
+import ErrorComponent from "@/components/ErrorComponent";
 
 export default async function ProjectModal({
   params,
@@ -15,7 +16,7 @@ export default async function ProjectModal({
 
   const response = await fetchProjectWithHistory(projectId);
 
-  if (!response.success) return <div>Error: {response.message}</div>;
+  if (!response.success) return <ErrorComponent message={response.message} />;
 
   const projectDetails = response.data;
   const projectHistory = processHistoryForChart(projectDetails.history);
