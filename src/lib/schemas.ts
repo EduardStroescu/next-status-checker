@@ -7,7 +7,14 @@ export const signupSchema = z
       .string()
       .describe("username")
       .min(5, "The username must be at least 5 characters long"),
-    avatar: z.url().optional().nullable(),
+    avatar: z
+      .string()
+      .transform((val) => (val === "" ? null : val))
+      .nullable()
+      .optional()
+      .refine((val) => val === null || z.url().safeParse(val).success, {
+        error: "Must be a valid URL or empty",
+      }),
     password: z
       .string({ error: "Password is required." })
       .describe("Password")

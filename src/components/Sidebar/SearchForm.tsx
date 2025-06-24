@@ -24,6 +24,23 @@ import { toast } from "sonner";
 import { useCommandState } from "cmdk";
 import { tinykeys } from "@/../node_modules/tinykeys/dist/tinykeys";
 
+const SEARCH_SHORTCUT = "K";
+const USER_ACTIONS = [
+  {
+    name: "Log Out",
+    shortcut: "o",
+    onSelect: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => {
+      setOpen(false);
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/api/auth/logout";
+
+      document.body.appendChild(form);
+      form.submit();
+    },
+  },
+];
+
 export function SearchForm({
   searchItems,
 }: {
@@ -34,30 +51,57 @@ export function SearchForm({
     items?: (SafeProject & { internalURL: string })[];
   }[];
 }) {
-  const commandRef = useRef<HTMLDivElement>(null);
+  const [command, setCommand] = useState<HTMLDivElement | null>(null);
+  const searchItemsRef = useRef(searchItems);
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
+    const generalBindings: Record<string, (event: KeyboardEvent) => void> = {};
+
+    for (const action of USER_ACTIONS) {
+      const shortcut = `$mod+${action.shortcut}`;
+      if (shortcut in generalBindings) continue;
+
+      generalBindings[shortcut] = () => action.onSelect(setOpen);
+    }
+
+    for (const category of searchItemsRef?.current ?? []) {
+      const shortcut = `$mod+${category.name[0].toLowerCase()}`;
+      if (shortcut in generalBindings) continue;
+
+      generalBindings[shortcut] = (evt: KeyboardEvent) => {
+        evt.preventDefault();
+        setSelectedCategory(category.url);
+      };
+    }
+
     const globalListenerUnsub = tinykeys(window, {
-      "$mod+k": (evt: KeyboardEvent) => {
+      [`$mod+${SEARCH_SHORTCUT}`]: (evt: KeyboardEvent) => {
         evt.preventDefault();
         setOpen((open) => !open);
       },
     });
 
+    let generalListenerUnsub: ReturnType<typeof tinykeys> | undefined;
+
+    if (command) {
+      generalListenerUnsub = tinykeys(command, generalBindings);
+    }
+
     return () => {
       globalListenerUnsub();
+      generalListenerUnsub?.();
     };
-  }, []);
+  }, [command]);
 
   function bounce() {
-    if (commandRef.current) {
-      commandRef.current.style.transform = "scale(0.96)";
+    if (command) {
+      command.style.transform = "scale(0.96)";
       setTimeout(() => {
-        if (commandRef.current) {
-          commandRef.current.style.transform = "";
+        if (command) {
+          command.style.transform = "";
         }
       }, 100);
     }
@@ -87,7 +131,8 @@ export function SearchForm({
         </button>
         <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
         <kbd className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium select-none">
-          <span className="text-xs">⌘</span>K
+          <span className="text-xs">⌘</span>
+          {SEARCH_SHORTCUT}
         </kbd>
         <CommandDialog
           open={open}
@@ -97,7 +142,7 @@ export function SearchForm({
             setSelectedCategory(null);
           }}
           dialogContentProps={{
-            ref: commandRef,
+            ref: setCommand,
           }}
           commandProps={{
             loop: true,
@@ -115,7 +160,6 @@ export function SearchForm({
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandContent
-              commandRef={commandRef}
               searchItems={searchItems}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
@@ -129,13 +173,11 @@ export function SearchForm({
 }
 
 const CommandContent = ({
-  commandRef,
   searchItems,
   selectedCategory,
   setSelectedCategory,
   setOpen,
 }: {
-  commandRef: React.RefObject<HTMLDivElement | null>;
   searchItems: {
     name: string;
     url: string;
@@ -197,7 +239,7 @@ const CommandContent = ({
             searchItems={searchItems}
           />
           <CommandSeparator />
-          <UserActions commandRef={commandRef} setOpen={setOpen} />
+          <UserActions setOpen={setOpen} />
         </>
       )}
     </>
@@ -305,7 +347,6 @@ const ProjectActions = ({
           className="data-[selected=true]:bg-cyan-800/70"
         >
           <span className="text-xs">{action.name}</span>
-          <CommandShortcut>⌘{action.shortcut}</CommandShortcut>
         </CommandItem>
       ))}
     </CommandGroup>
@@ -375,50 +416,16 @@ const ProjectsPages = ({
 };
 
 const UserActions = ({
-  commandRef,
   setOpen,
 }: {
-  commandRef: React.RefObject<HTMLDivElement | null>;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  const userActions = useMemo(
-    () => [
-      {
-        name: "Log Out",
-        shortcut: "o",
-        onSelect: () => {
-          setOpen(false);
-          const form = document.createElement("form");
-          form.method = "POST";
-          form.action = "/api/auth/logout";
-
-          document.body.appendChild(form);
-          form.submit();
-        },
-      },
-    ],
-    [setOpen]
-  );
-
-  useEffect(() => {
-    if (!commandRef.current) return;
-
-    const bindings: Record<string, (event: KeyboardEvent) => void> = {};
-
-    for (const action of userActions) {
-      bindings[`$mod+${action.shortcut}`] = action.onSelect;
-    }
-
-    const unsub = tinykeys(commandRef.current, bindings);
-    return () => unsub();
-  }, [commandRef, userActions]);
-
   return (
     <CommandGroup heading="User">
-      {userActions.map((action) => (
+      {USER_ACTIONS.map((action) => (
         <CommandItem
           key={action.name}
-          onSelect={action.onSelect}
+          onSelect={() => action.onSelect(setOpen)}
           className="data-[selected=true]:bg-cyan-800/70"
         >
           <span className="text-xs">{action.name}</span>

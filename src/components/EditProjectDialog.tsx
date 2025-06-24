@@ -40,7 +40,7 @@ const editProjectSchema = z.object({
     .optional()
     .nullable(),
   image: z
-    .url()
+    .string()
     .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
@@ -139,6 +139,7 @@ export default function EditProjectDialog({
                 {...register("name")}
                 id="name"
                 placeholder="My Awesome Project"
+                autoComplete="off"
               />
               {errors.name && (
                 <p className="text-red-500 text-xs">{errors.name.message}</p>
@@ -167,8 +168,12 @@ export default function EditProjectDialog({
                 name="category"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
+                  <Select
+                    name="category"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger id="category">
                       <SelectValue placeholder="Select project category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -207,7 +212,7 @@ export default function EditProjectDialog({
                     <Label htmlFor="dbUrl">Database URL</Label>
                     <Input
                       {...register("dbURL")}
-                      id="dburl"
+                      id="dbUrl"
                       placeholder="postgresql://..."
                     />
                     {errors.dbURL && (
@@ -220,7 +225,7 @@ export default function EditProjectDialog({
                     <Label htmlFor="dbKey">Database Key</Label>
                     <Input
                       {...register("dbKey")}
-                      id="dbkey"
+                      id="dbKey"
                       placeholder="Your Supabase anon key"
                     />
                     {errors.dbKey && (
@@ -299,6 +304,8 @@ export default function EditProjectDialog({
               control={control}
               render={({ field }) => (
                 <Switch
+                  name="enabled"
+                  id="enabled"
                   checked={field.value}
                   onCheckedChange={field.onChange}
                 />

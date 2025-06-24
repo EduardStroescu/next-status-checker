@@ -37,7 +37,7 @@ const createProjectSchema = z.object({
     .optional()
     .nullable(),
   image: z
-    .url()
+    .string()
     .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional()
@@ -100,9 +100,8 @@ export default function CreateProjectCard() {
     { value: "supabase", label: "Supabase Project" },
   ];
 
-  const onSubmit: SubmitHandler<z.infer<typeof createProjectSchema>> = async (
-    data
-  ) => createProject(data);
+  const onSubmit: SubmitHandler<z.infer<typeof createProjectSchema>> = (data) =>
+    createProject(data);
 
   const isSupabase = category === "supabase";
 
@@ -133,6 +132,7 @@ export default function CreateProjectCard() {
                 {...register("name")}
                 id="name"
                 placeholder="My Awesome Project"
+                autoComplete="off"
               />
               {errors.name && (
                 <p className="text-red-500 text-xs">{errors.name.message}</p>
@@ -162,11 +162,11 @@ export default function CreateProjectCard() {
                 control={control}
                 render={({ field }) => (
                   <Select
+                    name="category"
                     value={field.value}
                     onValueChange={field.onChange}
-                    required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="category">
                       <SelectValue placeholder="Select project category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -299,6 +299,7 @@ export default function CreateProjectCard() {
               render={({ field }) => (
                 <Switch
                   id="enabled"
+                  name="enabled"
                   checked={field.value}
                   onCheckedChange={field.onChange}
                 />
