@@ -1,5 +1,5 @@
 import TabViewer from "@/components/TabViewer";
-import { getAllProjects } from "@/lib/server/actions";
+import { getAllProjects } from "@/lib/server/queries";
 import { Suspense } from "react";
 
 export default async function Dashboard() {

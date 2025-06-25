@@ -18,11 +18,6 @@ import { ProjectWithHistory } from "@/lib/types";
 import { getImageUrl } from "@/lib/utils";
 import { startTransition, useOptimistic, useState } from "react";
 import Link from "next/link";
-import {
-  deleteProjectAction,
-  refreshIndividualProjectAction,
-  switchProjectStatus,
-} from "@/lib/server/actions";
 import EditProjectDialog from "./EditProjectDialog";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -37,6 +32,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
+import {
+  deleteProjectAction,
+  refreshIndividualProjectAction,
+  switchProjectStatus,
+} from "@/lib/server/actions";
 
 export default function ProjectCard({
   project,

@@ -10,15 +10,102 @@ import {
 } from "../types";
 import { history_table, projects_table } from "../db/schema";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUser, getServerDataSafe } from "./helpers";
 import { redirect } from "next/navigation";
 import { createClient, PostgrestError } from "@supabase/supabase-js";
 import { CustomError } from "../utils";
+import * as z from "zod/v4";
 
-export const getLiveReportForAllProjects = async () => {
+export const fetchAllProjects = async () => {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  return await getServerDataSafe(() =>
+    db
+      .select({
+        id: projects_table.id,
+        name: projects_table.name,
+        url: projects_table.url,
+        category: projects_table.category,
+        enabled: projects_table.enabled,
+        ownerId: projects_table.ownerId,
+      })
+      .from(projects_table)
+      .orderBy(asc(projects_table.name))
+  );
+};
+
+export const fetchProject = async (projectId: Project["id"]) => {
+  const idParse = z.coerce.number().safeParse(projectId);
+
+  if (!idParse.success)
+    throw new CustomError("Invalid project id provided", { statusCode: 400 });
+
   const user = await getCurrentUser();
   if (!user) return redirect("/login");
 
+  return await getServerDataSafe(async () => {
+    const [project] = await db
+      .selectDistinct()
+      .from(projects_table)
+      .where(
+        and(
+          eq(projects_table.ownerId, user.id),
+          eq(projects_table.id, idParse.data)
+        )
+      );
+
+    if (!project)
+      throw new CustomError("Project not found", { statusCode: 404 });
+
+    return project;
+  });
+};
+
+export const fetchProjectWithHistory = async (projectId: string | number) => {
+  const idParse = z.coerce.number().safeParse(projectId);
+
+  if (!idParse.success)
+    throw new CustomError("Invalid project id provided", { statusCode: 400 });
+
+  const user = await getCurrentUser();
+  if (!user) return redirect("/login");
+
+  return await getServerDataSafe(async () => {
+    const rows = await db
+      .select({
+        project: projects_table,
+        history: history_table,
+      })
+      .from(projects_table)
+      .leftJoin(history_table, eq(projects_table.id, history_table.projectId))
+      .where(
+        and(
+          eq(projects_table.ownerId, user.id),
+          eq(projects_table.id, idParse.data)
+        )
+      )
+      .orderBy(desc(history_table.lastChecked));
+
+    if (!rows.length)
+      throw new CustomError("Project not found", { statusCode: 404 });
+
+    const { project } = rows[0];
+
+    const history = rows
+      .map((row) => row.history)
+      .filter((h): h is typeof history_table.$inferSelect => h !== null);
+
+    const result = {
+      ...project,
+      history,
+    };
+
+    return result;
+  });
+};
+
+export const getLiveReportForAllProjects = async (user: SafeUser) => {
   const result = await db
     .select({
       project: projects_table,
@@ -55,6 +142,15 @@ export const getLiveReportForAllProjects = async () => {
   }
 
   return projectsByCategory as ProjectsByCategory;
+};
+
+export const getAllProjects = async () => {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  return await getServerDataSafe(
+    async () => await getLiveReportForAllProjects(user)
+  );
 };
 
 export const storeLatestStatusResult = async (newData: NewLogData) => {

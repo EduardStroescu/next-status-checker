@@ -1,4 +1,3 @@
-import { fetchAllProjects } from "@/lib/server/actions";
 import { SidebarContent, SidebarFooter } from "../ui/sidebar";
 import NavMain from "./NavMain";
 import { NavUser } from "./SidebarUser";
@@ -6,6 +5,7 @@ import { groupProjectsByCategory } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/server/helpers";
 import { Suspense } from "react";
 import { SearchForm } from "./SearchForm";
+import { fetchAllProjects } from "@/lib/server/queries";
 
 export async function SidebarOptions() {
   const response = await fetchAllProjects();

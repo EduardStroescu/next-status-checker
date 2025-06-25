@@ -1,10 +1,10 @@
 import { ChartAreaInteractive } from "@/components/ChartAreaInteractive";
 import { DataTable } from "@/components/DataTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchProjectWithHistory } from "@/lib/server/actions";
 import ProjectCard from "@/components/ProjectCard";
 import { processHistoryForChart } from "@/lib/utils";
 import ErrorComponent from "@/components/ErrorComponent";
+import { fetchProjectWithHistory } from "@/lib/server/queries";
 
 export default async function ProjectModal({
   params,

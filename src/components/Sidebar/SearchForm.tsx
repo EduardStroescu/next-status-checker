@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 
 import { SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,13 +16,13 @@ import {
 } from "../ui/command";
 import { SafeProject } from "@/lib/types";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { useCommandState } from "cmdk";
+import { tinykeys } from "@/../node_modules/tinykeys/dist/tinykeys";
 import {
   refreshIndividualProjectAction,
   switchProjectStatus,
 } from "@/lib/server/actions";
-import { toast } from "sonner";
-import { useCommandState } from "cmdk";
-import { tinykeys } from "@/../node_modules/tinykeys/dist/tinykeys";
 
 const SEARCH_SHORTCUT = "K";
 const USER_ACTIONS = [
@@ -52,10 +52,20 @@ export function SearchForm({
   }[];
 }) {
   const [command, setCommand] = useState<HTMLDivElement | null>(null);
-  const searchItemsRef = useRef(searchItems);
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    const globalListenerUnsub = tinykeys(window, {
+      [`$mod+${SEARCH_SHORTCUT}`]: (evt: KeyboardEvent) => {
+        evt.preventDefault();
+        setOpen((open) => !open);
+      },
+    });
+
+    return () => globalListenerUnsub();
+  }, []);
 
   useEffect(() => {
     const generalBindings: Record<string, (event: KeyboardEvent) => void> = {};
@@ -67,7 +77,7 @@ export function SearchForm({
       generalBindings[shortcut] = () => action.onSelect(setOpen);
     }
 
-    for (const category of searchItemsRef?.current ?? []) {
+    for (const category of searchItems ?? []) {
       const shortcut = `$mod+${category.name[0].toLowerCase()}`;
       if (shortcut in generalBindings) continue;
 
@@ -77,24 +87,14 @@ export function SearchForm({
       };
     }
 
-    const globalListenerUnsub = tinykeys(window, {
-      [`$mod+${SEARCH_SHORTCUT}`]: (evt: KeyboardEvent) => {
-        evt.preventDefault();
-        setOpen((open) => !open);
-      },
-    });
-
     let generalListenerUnsub: ReturnType<typeof tinykeys> | undefined;
 
     if (command) {
       generalListenerUnsub = tinykeys(command, generalBindings);
     }
 
-    return () => {
-      globalListenerUnsub();
-      generalListenerUnsub?.();
-    };
-  }, [command]);
+    return () => generalListenerUnsub?.();
+  }, [command, searchItems]);
 
   function bounce() {
     if (command) {

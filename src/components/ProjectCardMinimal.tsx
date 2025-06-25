@@ -10,8 +10,8 @@ import { getImageUrl, getLastCheckedText } from "@/lib/utils";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { refreshIndividualProjectAction } from "@/lib/server/actions";
 import { toast } from "sonner";
+import { refreshIndividualProjectAction } from "@/lib/server/actions";
 
 export default function ProjectCardMinimal({
   project,

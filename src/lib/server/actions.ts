@@ -1,185 +1,22 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUser, getServerDataSafe } from "./helpers";
 import { db } from "../db/drizzle";
 import { history_table, projects_table } from "../db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
-import {
-  CreateProject,
-  NewLogData,
-  Project,
-  ProjectsByCategory,
-  ProjectWithHistory,
-  SafeUser,
-  UpdateProject,
-} from "../types";
+import { and, eq } from "drizzle-orm";
+import { CreateProject, NewLogData, Project, UpdateProject } from "../types";
 import { revalidatePath } from "next/cache";
 import * as z from "zod/v4";
 import { SingleStoreRawQueryResult } from "drizzle-orm/singlestore";
 import { CustomError } from "../utils";
 import {
+  fetchProject,
   getLiveReportForApi,
   getLiveReportForFrontend,
   getLiveReportForSupabase,
   storeLatestStatusResult,
 } from "./queries";
-
-type SafeResponse<T> =
-  | { success: true; data: T }
-  | { success: false; message: string };
-
-const getServerDataSafe = async <T>(
-  cb: () => Promise<T>
-): Promise<SafeResponse<T>> => {
-  try {
-    const data = await cb();
-    return { success: true, data };
-  } catch (error) {
-    const message =
-      typeof error === "object" && error && "message" in error
-        ? (error.message as string)
-        : String(error);
-    return { success: false, message };
-  }
-};
-
-export const fetchAllProjects = async () => {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  return await getServerDataSafe(() =>
-    db
-      .select({
-        id: projects_table.id,
-        name: projects_table.name,
-        url: projects_table.url,
-        category: projects_table.category,
-        enabled: projects_table.enabled,
-        ownerId: projects_table.ownerId,
-      })
-      .from(projects_table)
-      .orderBy(asc(projects_table.name))
-  );
-};
-
-export const fetchProject = async (projectId: Project["id"]) => {
-  const idParse = z.coerce.number().safeParse(projectId);
-
-  if (!idParse.success)
-    throw new CustomError("Invalid project id provided", { statusCode: 400 });
-
-  const user = await getCurrentUser();
-  if (!user) return redirect("/login");
-
-  return await getServerDataSafe(async () => {
-    const [project] = await db
-      .selectDistinct()
-      .from(projects_table)
-      .where(
-        and(
-          eq(projects_table.ownerId, user.id),
-          eq(projects_table.id, idParse.data)
-        )
-      );
-
-    if (!project)
-      throw new CustomError("Project not found", { statusCode: 404 });
-
-    return project;
-  });
-};
-
-export const fetchProjectWithHistory = async (projectId: string | number) => {
-  const idParse = z.coerce.number().safeParse(projectId);
-
-  if (!idParse.success)
-    throw new CustomError("Invalid project id provided", { statusCode: 400 });
-
-  const user = await getCurrentUser();
-  if (!user) return redirect("/login");
-
-  return await getServerDataSafe(async () => {
-    const rows = await db
-      .select({
-        project: projects_table,
-        history: history_table,
-      })
-      .from(projects_table)
-      .leftJoin(history_table, eq(projects_table.id, history_table.projectId))
-      .where(
-        and(
-          eq(projects_table.ownerId, user.id),
-          eq(projects_table.id, idParse.data)
-        )
-      )
-      .orderBy(desc(history_table.lastChecked));
-
-    if (!rows.length)
-      throw new CustomError("Project not found", { statusCode: 404 });
-
-    const { project } = rows[0];
-
-    const history = rows
-      .map((row) => row.history)
-      .filter((h): h is typeof history_table.$inferSelect => h !== null);
-
-    const result = {
-      ...project,
-      history,
-    };
-
-    return result;
-  });
-};
-
-export const getLiveReportForAllProjects = async (user: SafeUser) => {
-  const result = await db
-    .select({
-      project: projects_table,
-      history: history_table,
-    })
-    .from(projects_table)
-    .leftJoin(history_table, eq(projects_table.id, history_table.projectId))
-    .where(eq(projects_table.ownerId, user.id))
-    .orderBy(asc(projects_table.name), desc(history_table.lastChecked));
-
-  const projectsByCategory: Record<string, ProjectWithHistory[]> = {};
-
-  for (const { project, history } of result) {
-    const category = project.category;
-
-    if (!projectsByCategory[category]) {
-      projectsByCategory[category] = [];
-    }
-
-    const existingProject = projectsByCategory[category].find(
-      (p) => p.id === project.id
-    );
-
-    if (existingProject) {
-      if (history) {
-        existingProject.history.push(history);
-      }
-    } else {
-      projectsByCategory[category].push({
-        ...project,
-        history: history ? [history] : [],
-      });
-    }
-  }
-
-  return projectsByCategory as ProjectsByCategory;
-};
-
-export const getAllProjects = async () => {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  return await getServerDataSafe(
-    async () => await getLiveReportForAllProjects(user)
-  );
-};
 
 export const switchProjectStatus = async (
   projectId: Project["id"],
