@@ -18,7 +18,7 @@ import {
   storeLatestStatusResult,
 } from "./queries";
 
-export const switchProjectStatus = async (
+export const switchProjectStatusAction = async (
   projectId: Project["id"],
   enabled: boolean
 ) => {

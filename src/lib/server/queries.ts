@@ -1,6 +1,13 @@
 import "server-only";
 
+import { history_table, projects_table } from "../db/schema";
+import { redirect } from "next/navigation";
 import { db } from "../db/drizzle";
+import { getCurrentUser, getServerDataSafe } from "./helpers";
+import { createClient, PostgrestError } from "@supabase/supabase-js";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { CustomError } from "../utils";
+import * as z from "zod/v4";
 import {
   NewLogData,
   Project,
@@ -8,13 +15,6 @@ import {
   ProjectWithHistory,
   SafeUser,
 } from "../types";
-import { history_table, projects_table } from "../db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
-import { getCurrentUser, getServerDataSafe } from "./helpers";
-import { redirect } from "next/navigation";
-import { createClient, PostgrestError } from "@supabase/supabase-js";
-import { CustomError } from "../utils";
-import * as z from "zod/v4";
 
 export const fetchAllProjects = async () => {
   const user = await getCurrentUser();
@@ -148,9 +148,7 @@ export const getAllProjects = async () => {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  return await getServerDataSafe(
-    async () => await getLiveReportForAllProjects(user)
-  );
+  return getServerDataSafe(() => getLiveReportForAllProjects(user));
 };
 
 export const storeLatestStatusResult = async (newData: NewLogData) => {
@@ -202,7 +200,7 @@ export const getLiveReportForSupabase = async (project: Project) => {
 export const refreshLiveReportForAllSupabaseProjects = async (
   userId: number
 ) => {
-  const supabaseProjects = await getSupabaseProjects(userId);
+  const supabaseProjects = await getProjectsByCategory(userId, "supabase");
 
   const results = await Promise.all(
     supabaseProjects.map(async (project) => getLiveReportForSupabase(project))
@@ -249,7 +247,7 @@ export const getLiveReportForFrontend = async (project: Project) => {
 };
 
 export const getLiveReportForAllFrontends = async (userId: number) => {
-  const frontendProjects = await getFrontendProjects(userId);
+  const frontendProjects = await getProjectsByCategory(userId, "frontend");
 
   const results = await Promise.all(
     frontendProjects.map(async (project) => getLiveReportForFrontend(project))
@@ -296,7 +294,7 @@ export const getLiveReportForApi = async (project: Project) => {
 };
 
 export const getLiveReportForAllApis = async (userId: number) => {
-  const projects = await getApiProjects(userId);
+  const projects = await getProjectsByCategory(userId, "api");
 
   const results = await Promise.all(
     projects.map(async (project) => getLiveReportForApi(project))
@@ -315,60 +313,23 @@ export const refreshLiveReportForAllApis = async (user: SafeUser) => {
   }
 };
 
-export const getSupabaseProjects = async (userId: number) => {
+export const getProjectsByCategory = async (
+  userId: number,
+  category: Project["category"]
+) => {
   try {
-    const supabaseProjects = await db
+    return (await db
       .select()
       .from(projects_table)
       .where(
         and(
           eq(projects_table.ownerId, userId),
-          eq(projects_table.category, "supabase"),
+          eq(projects_table.category, category),
           eq(projects_table.enabled, true)
         )
-      );
-
-    return supabaseProjects as Project[];
+      )) as Project[];
   } catch {
-    throw new Error("Could not fetch supabase projects");
-  }
-};
-
-export const getApiProjects = async (userId: number) => {
-  try {
-    const apiProjects = await db
-      .select()
-      .from(projects_table)
-      .where(
-        and(
-          eq(projects_table.ownerId, userId),
-          eq(projects_table.category, "api"),
-          eq(projects_table.enabled, true)
-        )
-      );
-
-    return apiProjects as Project[];
-  } catch {
-    throw new Error("Could not fetch api projects");
-  }
-};
-
-export const getFrontendProjects = async (userId: number) => {
-  try {
-    const frontendProjects = await db
-      .select()
-      .from(projects_table)
-      .where(
-        and(
-          eq(projects_table.ownerId, userId),
-          eq(projects_table.category, "frontend"),
-          eq(projects_table.enabled, true)
-        )
-      );
-
-    return frontendProjects as Project[];
-  } catch {
-    throw new Error("Could not fetch frontend projects");
+    throw new Error(`Could not fetch ${category} projects`);
   }
 };
 

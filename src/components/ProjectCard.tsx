@@ -35,7 +35,7 @@ import {
 import {
   deleteProjectAction,
   refreshIndividualProjectAction,
-  switchProjectStatus,
+  switchProjectStatusAction,
 } from "@/lib/server/actions";
 
 export default function ProjectCard({
@@ -73,7 +73,7 @@ export default function ProjectCard({
     startTransition(() => {
       switchOptimisticEnabled(checked);
     });
-    await switchProjectStatus(project.id, checked);
+    await switchProjectStatusAction(project.id, checked);
   };
 
   const getCategoryColor = (category: string) => {

@@ -21,7 +21,7 @@ import { useCommandState } from "cmdk";
 import { tinykeys } from "@/../node_modules/tinykeys/dist/tinykeys";
 import {
   refreshIndividualProjectAction,
-  switchProjectStatus,
+  switchProjectStatusAction,
 } from "@/lib/server/actions";
 
 const SEARCH_SHORTCUT = "K";
@@ -313,7 +313,7 @@ const ProjectActions = ({
               shortcut: "E",
               onSelect: () => {
                 toast.promise(
-                  switchProjectStatus(
+                  switchProjectStatusAction(
                     selectedProject.id,
                     !selectedProject.enabled
                   ),
