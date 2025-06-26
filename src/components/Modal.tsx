@@ -2,8 +2,15 @@
 
 import { useCallback, useRef, useEffect, type MouseEventHandler } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-export function Modal({ children }: { children: React.ReactNode }) {
+export function Modal({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const overlay = useRef(null);
   const wrapper = useRef(null);
   const router = useRouter();
@@ -18,7 +25,7 @@ export function Modal({ children }: { children: React.ReactNode }) {
         if (onDismiss) onDismiss();
       }
     },
-    [onDismiss, overlay, wrapper]
+    [onDismiss]
   );
 
   const onKeyDown = useCallback(
@@ -36,12 +43,15 @@ export function Modal({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={overlay}
-      className="fixed inset-0 z-[20] flex w-screen flex-col items-center justify-around bg-black/60 duration-300 ease-in-out animate-in fade-in"
+      className="fixed inset-0 z-[20] flex w-screen flex-col items-center justify-around bg-black/60 duration-300 ease-in animate-in fade-in"
       onClick={onClick}
     >
       <div
         ref={wrapper}
-        className="absolute max-w-[90dvw] w-auto max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto px-2"
+        className={cn(
+          "absolute max-w-[90dvw] w-auto max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto px-2",
+          className
+        )}
       >
         {children}
       </div>

@@ -3,7 +3,6 @@ import NavMain from "./NavMain";
 import { NavUser } from "./SidebarUser";
 import { groupProjectsByCategory } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/server/helpers";
-import { Suspense } from "react";
 import { SearchForm } from "./SearchForm";
 import { fetchAllProjects } from "@/lib/server/queries";
 
@@ -16,7 +15,7 @@ export async function SidebarOptions() {
   const navMain = groupProjectsByCategory(response.data);
 
   return (
-    <Suspense fallback={null}>
+    <>
       <SearchForm searchItems={navMain} />
       <SidebarContent>
         <NavMain items={navMain} />
@@ -24,6 +23,6 @@ export async function SidebarOptions() {
       <SidebarFooter>
         <NavUser user={user} />
       </SidebarFooter>
-    </Suspense>
+    </>
   );
 }

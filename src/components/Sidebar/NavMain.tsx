@@ -58,7 +58,18 @@ export default function NavMain({
     params.set("tab", param.toLowerCase());
     if (pathname !== "/dashboard")
       return router.push(`/dashboard?${params.toString()}`);
-    window.history.replaceState(null, "", `/dashboard?${params.toString()}`);
+
+    if (!document.startViewTransition) {
+      return window.history.replaceState(
+        null,
+        "",
+        `/dashboard?${params.toString()}`
+      );
+    }
+
+    document.startViewTransition(() => {
+      window.history.replaceState(null, "", `/dashboard?${params.toString()}`);
+    });
   };
 
   return (

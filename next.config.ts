@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
     ];
   },
   experimental: {
+    viewTransition: true,
     staleTimes: {
       dynamic: 30,
     },

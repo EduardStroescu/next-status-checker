@@ -40,7 +40,17 @@ export default function TabViewer({ projects }: TabViewerProps) {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("tab", tab.toLowerCase());
 
-    window.history.replaceState(null, "", `?${newSearchParams.toString()}`);
+    if (!document.startViewTransition) {
+      return window.history.replaceState(
+        null,
+        "",
+        `?${newSearchParams.toString()}`
+      );
+    }
+
+    document.startViewTransition(() => {
+      window.history.replaceState(null, "", `?${newSearchParams.toString()}`);
+    });
   };
 
   return (
