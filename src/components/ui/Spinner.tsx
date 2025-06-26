@@ -25,7 +25,7 @@ export function Spinner({
 
   return (
     <div
-      className={cn("relative", `animate-[spin]`, className)}
+      className={cn("relative animate-[spin]", className)}
       style={{
         animationDuration: `${duration}ms`,
         animationDirection: reverse ? "reverse" : "normal",
@@ -38,7 +38,7 @@ export function Spinner({
         <span
           aria-hidden="true"
           key={`${index}-${letter}`}
-          className="absolute z-[999999] left-1/2 top-1/2 inline-block"
+          className="absolute z-[999999] left-1/2 top-1/2 inline-block starting:opacity-0 opacity-100 transition-opacity"
           style={
             {
               "--index": index,
@@ -52,10 +52,12 @@ export function Spinner({
                   translateY(calc(var(--radius, 5) * -1ch))
                 `,
               transformOrigin: "center",
+              transitionDelay: `${index * 50}ms`,
+              transitionDuration: `750ms`,
             } as CSSProperties
           }
         >
-          {letter}
+          {letter === " " ? "\u00A0" : letter}
         </span>
       ))}
       <span className="sr-only">{children}</span>

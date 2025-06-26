@@ -11,6 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import { refreshAllProjects } from "@/lib/client/queries";
 import { CirclePlus } from "lucide-react";
 import Link from "next/link";
+import AnimatedText from "./ui/animated-text";
 
 interface TabViewerProps {
   projects: ProjectsByCategory;
@@ -71,7 +72,7 @@ export default function TabViewer({ projects }: TabViewerProps) {
                 tab.toLowerCase() === currentTabFromQuery ? "bg-accent" : ""
               } text-xl`}
             >
-              {tab}
+              <AnimatedText as="p">{tab}</AnimatedText>
             </ToggleGroupItem>
           ))}
         </ToggleGroup>

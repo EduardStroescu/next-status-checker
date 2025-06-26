@@ -72,55 +72,80 @@ export default function NavMain({
     });
   };
 
+  let totalDelaySoFar = 0;
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
-          <Collapsible
-            key={item.name}
-            asChild
-            defaultOpen={true}
-            className="group/collapsible"
-          >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.name} className="w-full">
-                  {(() => {
-                    const Icon = CATEGORY_ICONS[item.name.toLowerCase()];
-                    return Icon ? <Icon /> : null;
-                  })()}
-                  <Link
-                    href={`/dashboard?tab=${item.url}`}
-                    onClick={(e) => e.stopPropagation()}
-                    onNavigate={(e) => handleParamNavigation(e, item.url)}
-                    className="w-full py-2"
+        {items.map((item, itemIdx) => {
+          const childCount = item.items?.length || 0;
+          const parentDelay = totalDelaySoFar;
+          const childBaseDelay = parentDelay + 200;
+          totalDelaySoFar += 200 + childCount * 100;
+
+          return (
+            <Collapsible
+              key={item.name}
+              asChild
+              defaultOpen={true}
+              className="group/collapsible"
+            >
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton
+                    tooltip={item.name}
+                    className="w-full starting:opacity-0 opacity-100 transition-opacity "
+                    style={{
+                      transitionDelay: `${parentDelay}ms`,
+                      animationDelay: `${itemIdx * 100}ms`,
+                      transitionDuration: "250ms",
+                    }}
                   >
-                    {item.name}
-                  </Link>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.name}>
-                      <SidebarMenuSubButton asChild>
-                        <Link
-                          href={`${
-                            subItem.internalURL
-                          }?${searchParams.toString()}`}
-                        >
-                          <span>{subItem.name}</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        ))}
+                    {(() => {
+                      const Icon = CATEGORY_ICONS[item.name.toLowerCase()];
+                      return Icon ? <Icon /> : null;
+                    })()}
+                    <Link
+                      href={`/dashboard?tab=${item.url}`}
+                      onClick={(e) => e.stopPropagation()}
+                      onNavigate={(e) => handleParamNavigation(e, item.url)}
+                      className="w-full py-2"
+                    >
+                      {item.name}
+                    </Link>
+                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {item.items?.map((subItem, subItemIdx) => (
+                      <SidebarMenuSubItem key={subItem.name}>
+                        <SidebarMenuSubButton asChild>
+                          <Link
+                            href={`${
+                              subItem.internalURL
+                            }?${searchParams.toString()}`}
+                            className="starting:opacity-0 opacity-100 transition-opacity "
+                            style={{
+                              transitionDelay: `${
+                                childBaseDelay + subItemIdx * 100
+                              }ms`,
+                              animationDelay: `${itemIdx * 100}ms`,
+                              transitionDuration: "250ms",
+                            }}
+                          >
+                            <span>{subItem.name}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { refreshIndividualProjectAction } from "@/lib/server/actions";
+import AnimatedText from "./ui/animated-text";
 
 export default function ProjectCardMinimal({
   project,
@@ -85,9 +86,12 @@ export default function ProjectCardMinimal({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <h3 className="font-semibold text-lg leading-tight">
+              <AnimatedText
+                as="h3"
+                className="font-semibold text-lg leading-tight"
+              >
                 {project.name}
-              </h3>
+              </AnimatedText>
               <Button
                 aria-label="Refresh project"
                 onClick={() =>
