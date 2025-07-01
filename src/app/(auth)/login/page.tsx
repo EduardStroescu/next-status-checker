@@ -1,18 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCurrentUser } from "@/lib/server/helpers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function Login({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const currentUser = await getCurrentUser();
-  if (currentUser) return redirect("/dashboard");
-
   const { errors } = await searchParams;
 
   return (
