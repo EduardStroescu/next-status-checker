@@ -40,7 +40,15 @@ export async function GET(req: NextRequest) {
   const fonts = searchParams.getAll("fonts");
   const text = searchParams.get("text");
 
-  if (!fonts || fonts.length === 0 || !text) return;
+  if (!fonts || fonts.length === 0) return;
+  if (!text) {
+    return new NextResponse(await fetchFont(fonts[0]), {
+      headers: {
+        "Content-Type": "font/woff",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  }
 
   const textByFont = await detector.detect(text, fonts);
 
@@ -49,7 +57,7 @@ export async function GET(req: NextRequest) {
   const encodedFontBuffers: ArrayBuffer[] = [];
   let fontBufferByteLength = 0;
   (
-    await Promise.all(_fonts.map((font) => fetchFont(textByFont[font], font)))
+    await Promise.all(_fonts.map((font) => fetchFont(font, textByFont[font])))
   ).forEach((fontData, i) => {
     if (fontData) {
       // TODO: We should be able to directly get the language code here :)
@@ -82,12 +90,16 @@ export async function GET(req: NextRequest) {
 }
 
 async function fetchFont(
-  text: string,
-  font: string
+  font: string,
+  text?: string
 ): Promise<ArrayBuffer | null> {
-  const API = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(
-    text
-  )}`;
+  let API = `https://fonts.googleapis.com/css2?family=${font}`;
+
+  if (text) {
+    API = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(
+      text
+    )}`;
+  }
 
   const css = await (
     await fetch(API, {

@@ -1,8 +1,14 @@
 "use client";
 
+declare global {
+  interface Window {
+    __resource?: [ArrayBuffer, ArrayBuffer, ArrayBuffer];
+  }
+}
+
 import "./styles.css";
-import React from "react";
-import satori, { type SatoriOptions } from "satori";
+import { ComponentType, Dispatch, FormEvent, SetStateAction } from "react";
+import satori, { Font, type SatoriOptions } from "satori";
 import { LiveProvider, LiveContext, withLive } from "react-live";
 import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -37,12 +43,6 @@ import { initDefaultFonts, loadDynamicAsset } from "./utils";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 
-declare global {
-  interface Window {
-    __resource?: [ArrayBuffer, ArrayBuffer, ArrayBuffer];
-  }
-}
-
 const cardNames = Object.keys(playgroundTabs);
 const editedCards: TabsData = { ...playgroundTabs };
 
@@ -56,7 +56,7 @@ let overrideOptions: {
   fontEmbed: boolean;
 } | null = null;
 
-const loadFonts = initDefaultFonts();
+const loadDefaultFonts = initDefaultFonts();
 
 function LiveEditor({ id }: { id: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -129,25 +129,136 @@ function LiveEditor({ id }: { id: string }) {
   );
 }
 
+function EditorPanel({
+  activeCard,
+  setActiveCard,
+}: {
+  activeCard: string;
+  setActiveCard: Dispatch<SetStateAction<string>>;
+}) {
+  const handleShare = () => {
+    const code = editedCards[activeCard];
+    const compressed = Base64.fromUint8Array(
+      fflate.deflateSync(
+        fflate.strToU8(
+          JSON.stringify({
+            code,
+            options: currentOptions,
+            tab: activeCard,
+          })
+        )
+      ),
+      true
+    );
+
+    window.history.replaceState(null, "", "?share=" + compressed);
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Copied to clipboard");
+  };
+
+  return (
+    <Tabs
+      options={cardNames}
+      onChange={(name: string) => {
+        setActiveCard(name);
+      }}
+    >
+      <div className="flex flex-col h-[500px] xl:h-full bg-background rounded-xl rounded-tl-none border border-white overflow-auto">
+        <div className="py-1 px-2 gap-2 flex justify-end bg-white text-black text-xs select-none">
+          <ResetCode activeCard={activeCard} />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2"
+            onClick={handleShare}
+          >
+            Share
+          </Button>
+        </div>
+        <div className="flex-1">
+          <LiveEditor key={activeCard} id={activeCard} />
+        </div>
+      </div>
+    </Tabs>
+  );
+}
+
+function ResetCode({ activeCard }: { activeCard: string }) {
+  const { onChange } = useContext(LiveContext);
+  const onChangeRef = useRef(onChange);
+
+  // Keep the ref updated so it's always the latest onChange
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    const params = new URL(String(document.location)).searchParams;
+    const shared = params.get("share");
+    // we just need change editedCards on mounted
+    if (shared) {
+      try {
+        const decompressedData = fflate.strFromU8(
+          fflate.decompressSync(Base64.toUint8Array(shared))
+        );
+        let card;
+        let tab;
+        try {
+          const decoded = JSON.parse(decompressedData);
+          card = decoded.code;
+          overrideOptions = decoded.options;
+          tab = decoded.tab || "helloworld";
+        } catch {
+          card = decompressedData;
+        }
+
+        editedCards[tab] = card;
+        onChangeRef.current(editedCards[tab]);
+      } catch (e) {
+        console.error("Failed to parse shared card:", e);
+      }
+    }
+  }, []);
+
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-6 px-2"
+      onClick={() => {
+        editedCards[activeCard] = playgroundTabs[activeCard];
+        onChange(editedCards[activeCard]);
+        window.history.replaceState(null, "", "/generator/og");
+        toast.success("Content reset");
+      }}
+    >
+      Reset
+    </Button>
+  );
+}
+
 const LiveSatori = withLive(function ({
   live,
 }: {
-  live?: { element: React.ComponentType; error: string };
+  live?: { element: ComponentType; error: string };
 }) {
+  const [width, setWidth] = useState(1200);
+  const [height, setHeight] = useState(630);
+
   const [options, setOptions] = useState<Partial<SatoriOptions> | null>(null);
   const [debug, setDebug] = useState(false);
   const [fontEmbed, setFontEmbed] = useState(true);
   const [emojiType, setEmojiType] = useState<keyof typeof apis>("twemoji");
   const [renderType, setRenderType] = useState("svg");
-  const [renderError, setRenderError] = useState<string | null>(null);
-  const [width, setWidth] = useState(1200);
-  const [height, setHeight] = useState(630);
-  const [iframeNode, setIframeNode] = useState<HTMLElement | undefined>();
-  const previewContainerRef = useRef<HTMLDivElement>(null);
-  const [scaleRatio, setScaleRatio] = useState(1);
-  const [loadingResources, setLoadingResources] = useState(true);
 
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [loadingResources, setLoadingResources] = useState(true);
+  const [iframeNode, setIframeNode] = useState<HTMLElement | undefined>();
+  const [scaleRatio, setScaleRatio] = useState(1);
+
+  const previewContainerRef = useRef<HTMLDivElement>(null);
   const sizeRef = useRef([width, height]);
+
   sizeRef.current = [width, height];
 
   const updateIframeRef = useCallback(
@@ -316,37 +427,107 @@ const LiveSatori = withLive(function ({
   useEffect(() => {
     (async () => {
       setOptions({
-        fonts: await loadFonts,
+        fonts: await loadDefaultFonts,
       });
       setLoadingResources(false);
     })();
   }, []);
 
+  const handleUpdateFonts = useCallback(
+    async (evt: FormEvent<HTMLFormElement>) => {
+      evt.preventDefault();
+      const formData = new FormData(evt.currentTarget);
+
+      type FontWithNoData = NonNullable<Omit<Font, "data">>;
+
+      const newData = Array.from(formData.entries()).reduce(
+        (acc, [key, value]) => {
+          const [fontIdx, rawKey] = key.split("-");
+          const idx = Number(fontIdx);
+          const name = rawKey as keyof FontWithNoData;
+
+          if (!acc[idx]) {
+            acc[idx] = {} as FontWithNoData;
+          }
+
+          const entry = acc[idx];
+
+          if (name === "weight") {
+            entry.weight = Number(value) as Font["weight"];
+          } else if (name === "style") {
+            entry.style = value as Font["style"];
+          } else if (name === "name") {
+            entry.name = value as string;
+          }
+
+          return acc;
+        },
+        [] as FontWithNoData[]
+      );
+
+      const newFonts = options?.fonts
+        ? await Promise.all(
+            options.fonts.map(async (prevFont, idx) => {
+              const newFont = newData[idx];
+              if (
+                prevFont.name === newFont.name &&
+                prevFont.style === newFont.style &&
+                prevFont.weight === newFont.weight
+              ) {
+                return prevFont;
+              } else {
+                try {
+                  const data = await await fetch(
+                    `/api/og/font?fonts=${encodeURIComponent(newFont.name)}`
+                  );
+                  if (data.status === 200) {
+                    const fontData = await data.arrayBuffer();
+                    return {
+                      ...newFont,
+                      data: fontData,
+                    };
+                  }
+                  toast.error("Failed to load font");
+                  return prevFont;
+                } catch {
+                  toast.error("Failed to load font");
+                  return prevFont;
+                }
+              }
+            })
+          )
+        : [];
+
+      setOptions((prevOptions) => ({
+        ...prevOptions,
+        fonts: newFonts,
+      }));
+    },
+    [options?.fonts]
+  );
+
   return (
     <div className="h-auto xl:h-1/2 w-full flex-1">
       <Tabs
         options={previewTabs}
-        onChange={(text) => {
-          const _renderType = text.split(" ")[0].toLowerCase();
-          // 'svg' | 'png' | 'html' | 'pdf'
-          setRenderType(_renderType);
-        }}
+        //  'svg' | 'png' | 'html' | 'pdf'
+        onChange={(text) => setRenderType(text.split(" ")[0].toLowerCase())}
       >
         <div className="flex flex-col flex-1 relative bg-white overflow-hidden mb-2.5 rounded-b-xl border border-border rounded-tr-xl">
-          {live?.error || renderError ? (
+          {(!!live?.error || !!renderError) && (
             <div className="absolute w-full h-[calc(100%-24px)] py-2.5 px-5 overflow-auto text-red-500 z-15">
               <pre className="m-0 whitespace-pre-wrap text-xs">
                 {live?.error || renderError}
               </pre>
             </div>
-          ) : null}
+          )}
 
-          {loadingResources ? (
+          {loadingResources && (
             <Spinner
               fontSize={2}
               className="text-black absolute inset-0 z-10"
             >{`Loading • Loading • Loading • `}</Spinner>
-          ) : null}
+          )}
 
           <div
             className="relative flex w-full h-[500px] xl:h-full  justify-center items-center overflow-hidden"
@@ -377,7 +558,7 @@ const LiveSatori = withLive(function ({
                           __html: `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Material+Icons');body{display:flex;height:100%;margin:0;tab-size:8;font-family:Inter,sans-serif;overflow:hidden}body>div,body>div *{box-sizing:border-box;display:flex}`,
                         }}
                       />
-                      {live?.element ? <live.element /> : null}
+                      {!!live?.element && <live.element />}
                     </>,
                     iframeNode
                   )}
@@ -509,7 +690,10 @@ const LiveSatori = withLive(function ({
             />
           </div>
           <Separator />
-          <FontConfig fonts={options?.fonts} />
+          <FontConfig
+            fonts={options?.fonts}
+            handleUpdateFonts={handleUpdateFonts}
+          />
           <Separator />
           <div className="w-full flex gap-2 py-4">
             <Label htmlFor="font" className="flex-none w-36">
@@ -590,6 +774,68 @@ const LiveSatori = withLive(function ({
   );
 });
 
+function FontConfig({
+  fonts,
+  handleUpdateFonts,
+}: {
+  fonts: SatoriOptions["fonts"] | undefined;
+  handleUpdateFonts: (evt: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form
+      onSubmit={handleUpdateFonts}
+      className="flex flex-col gap-2 py-[16px]"
+    >
+      {fonts?.map((font, idx) => (
+        <div key={font.name + "-" + idx} className="flex flex-row items-center">
+          <Label htmlFor={`${idx}-name`} className="flex-none w-[140px]">
+            Font #{idx + 1}
+          </Label>
+          <div className="w-full flex flex-wrap xl:flex-nowrap gap-2">
+            <Input
+              id={`${idx}-name`}
+              name={`${idx}-name`}
+              type="text"
+              defaultValue={font.name}
+              placeholder="e.g. Inter"
+            />
+            <div className="flex flex-row gap-2">
+              <Label htmlFor={`${idx}-style`}>Style</Label>
+              <Select name={`${idx}-style`} defaultValue={font.style}>
+                <SelectTrigger id={`${idx}-style`} name={`font${idx}Style`}>
+                  <SelectValue placeholder={font.style} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">normal</SelectItem>
+                  <SelectItem value="italic">italic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-row gap-2">
+              <Label htmlFor={`${idx}-weight`}>Weight</Label>
+              <Input
+                name={`${idx}-weight`}
+                id={`${idx}-weight`}
+                type="number"
+                placeholder={"400"}
+                defaultValue={String(font.weight)}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        className="w-1/4 mx-auto mt-2"
+      >
+        Save
+      </Button>
+    </form>
+  );
+}
+
 export default function Playground() {
   const searchParams = useSearchParams();
   const lastActiveCard = searchParams.get("lastActiveCard");
@@ -642,161 +888,6 @@ export default function Playground() {
           ) : null}
         </LiveProvider>
       </div>
-    </div>
-  );
-}
-
-function EditorPanel({
-  activeCard,
-  setActiveCard,
-}: {
-  activeCard: string;
-  setActiveCard: React.Dispatch<React.SetStateAction<string>>;
-}) {
-  const handleShare = () => {
-    const code = editedCards[activeCard];
-    const compressed = Base64.fromUint8Array(
-      fflate.deflateSync(
-        fflate.strToU8(
-          JSON.stringify({
-            code,
-            options: currentOptions,
-            tab: activeCard,
-          })
-        )
-      ),
-      true
-    );
-
-    window.history.replaceState(null, "", "?share=" + compressed);
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Copied to clipboard");
-  };
-
-  return (
-    <Tabs
-      options={cardNames}
-      onChange={(name: string) => {
-        setActiveCard(name);
-      }}
-    >
-      <div className="flex flex-col h-[500px] xl:h-full bg-background rounded-xl rounded-tl-none border border-white overflow-auto">
-        <div className="py-1 px-2 gap-2 flex justify-end bg-white text-black text-xs select-none">
-          <ResetCode activeCard={activeCard} />
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2"
-            onClick={handleShare}
-          >
-            Share
-          </Button>
-        </div>
-        <div className="flex-1">
-          <LiveEditor key={activeCard} id={activeCard} />
-        </div>
-      </div>
-    </Tabs>
-  );
-}
-
-function ResetCode({ activeCard }: { activeCard: string }) {
-  const { onChange } = useContext(LiveContext);
-  const onChangeRef = useRef(onChange);
-
-  // Keep the ref updated so it's always the latest onChange
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
-
-  useEffect(() => {
-    const params = new URL(String(document.location)).searchParams;
-    const shared = params.get("share");
-    // we just need change editedCards on mounted
-    if (shared) {
-      try {
-        const decompressedData = fflate.strFromU8(
-          fflate.decompressSync(Base64.toUint8Array(shared))
-        );
-        let card;
-        let tab;
-        try {
-          const decoded = JSON.parse(decompressedData);
-          card = decoded.code;
-          overrideOptions = decoded.options;
-          tab = decoded.tab || "helloworld";
-        } catch {
-          card = decompressedData;
-        }
-
-        editedCards[tab] = card;
-        onChangeRef.current(editedCards[tab]);
-      } catch (e) {
-        console.error("Failed to parse shared card:", e);
-      }
-    }
-  }, []);
-
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="h-6 px-2"
-      onClick={() => {
-        editedCards[activeCard] = playgroundTabs[activeCard];
-        onChange(editedCards[activeCard]);
-        window.history.replaceState(null, "", "/generator/og");
-        toast.success("Content reset");
-      }}
-    >
-      Reset
-    </Button>
-  );
-}
-
-function FontConfig({ fonts }: { fonts: SatoriOptions["fonts"] | undefined }) {
-  if (!fonts) return null;
-  return (
-    <div className="flex flex-col gap-2 py-[16px]">
-      {fonts?.map((font, idx) => (
-        <div key={font.name + "-" + idx} className="flex flex-row items-center">
-          <Label htmlFor={`font${idx + 1}`} className="flex-none w-[140px]">
-            Font #{idx + 1}
-          </Label>
-          <div className="w-full flex flex-wrap xl:flex-nowrap gap-2">
-            <Input
-              id={`font${idx + 1}`}
-              name={`font${idx + 1}`}
-              type="text"
-              value={font.name}
-              // TODO: onChange={(v) => setFonts(v)}
-              onChange={(v) => {}}
-              placeholder="e.g. Inter"
-            />
-            <div className="flex flex-row gap-2">
-              <Label htmlFor={`font${idx + 1}Style`}>Style</Label>
-              <Select>
-                <SelectTrigger id={`font${idx + 1}Style`}>
-                  <SelectValue placeholder={font.style} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">normal</SelectItem>
-                  <SelectItem value="italic">italic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-row gap-2">
-              <Label htmlFor={`font${idx + 1}Weight`}>Weight</Label>
-              <Input
-                id={`font${idx + 1}Weight`}
-                type="number"
-                name={`font${idx + 1}Weight`}
-                placeholder={String(font.weight)}
-              />
-            </div>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
