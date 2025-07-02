@@ -1,6 +1,12 @@
 import { Font, FontStyle, FontWeight } from "satori";
 import { apis, getIconCode, loadEmoji } from "./twemoji";
 import { languageFontMap } from "./font";
+import {
+  Component,
+  JSXElementConstructor,
+  ReactElement,
+  ReactNode,
+} from "react";
 
 export async function initDefaultFonts() {
   if (typeof window === "undefined") return [];
@@ -132,38 +138,82 @@ export const loadDynamicAsset = withCache(
   }
 );
 
-export async function loadGoogleFont(font: string, text?: string) {
-  let url = `https://fonts.googleapis.com/css2?family=${font}`;
+type ReactElementProps = {
+  children?: ReactNode;
+  [key: string]: unknown;
+};
 
-  if (text) {
-    url = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(
-      text
-    )}`;
+function isReactElement<P = ReactElementProps>(
+  element: ReactNode
+): element is ReactElement<P> {
+  return (
+    typeof element === "object" &&
+    element !== null &&
+    "type" in element &&
+    "props" in element
+  );
+}
+
+export function isClassComponent<P = ReactElementProps>(
+  component: JSXElementConstructor<P>
+): component is { new (props: P): Component<P> } {
+  return (
+    typeof component === "function" &&
+    !!(component.prototype && component.prototype.isReactComponent)
+  );
+}
+
+function isFunctionComponent<P = ReactElementProps>(
+  component: JSXElementConstructor<P>
+): component is (props: P) => ReactNode {
+  return (
+    typeof component === "function" &&
+    !(component.prototype && component.prototype.isReactComponent)
+  );
+}
+
+export function resolveChildren(children: ReactNode) {
+  if (Array.isArray(children)) {
+    return children.map(resolveReactElement);
+  } else if (children && typeof children === "object") {
+    return resolveReactElement(children);
+  }
+  return children; // primitives, null, etc
+}
+
+export function resolveReactElement(element: ReactNode): ReactNode {
+  if (!isReactElement(element)) {
+    return element;
   }
 
-  const css = await (
-    await fetch(url, {
-      headers: {
-        // Make sure it returns TTF.
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1",
-      },
-    })
-  ).text();
-  const resource = css.match(
-    /src: url\((.+)\) format\('(opentype|truetype)'\)/
-  );
+  const { type, props } = element;
 
-  if (resource) {
-    const response = await fetch(resource[1]);
-    if (response.status == 200) {
-      return {
-        name: font,
-        data: await response.arrayBuffer(),
-        style: "normal" as const,
-      };
+  if (typeof type === "function") {
+    if (isClassComponent(type)) {
+      const instance = new type(props);
+      const rendered = instance.render();
+      return resolveReactElement(rendered);
+    } else if (isFunctionComponent(type)) {
+      const rendered = type(props);
+      return resolveReactElement(rendered);
+    } else {
+      // Unexpected case (should not happen)
+      return element;
     }
   }
 
-  throw new Error("failed to load font data");
+  if (typeof type === "string") {
+    // Now safely access props.children
+    const resolvedChildren = resolveChildren(props?.children ?? null);
+
+    return {
+      ...element,
+      props: {
+        ...props,
+        children: resolvedChildren,
+      },
+    };
+  }
+
+  return element;
 }
