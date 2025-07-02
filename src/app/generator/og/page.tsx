@@ -7,7 +7,13 @@ declare global {
 }
 
 import "./styles.css";
-import { ComponentType, Dispatch, FormEvent, SetStateAction } from "react";
+import {
+  ComponentType,
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+  useMemo,
+} from "react";
 import satori, { Font, type SatoriOptions } from "satori";
 import { LiveProvider, LiveContext, withLive } from "react-live";
 import { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -54,6 +60,7 @@ let overrideOptions: {
   debug: boolean;
   emojiType: keyof typeof apis;
   fontEmbed: boolean;
+  fonts: Font[] | undefined;
 } | null = null;
 
 const loadDefaultFonts = initDefaultFonts();
@@ -390,6 +397,7 @@ const LiveSatori = withLive(function ({
       }
 
       Object.assign(currentOptions, {
+        fonts: options?.fonts,
         width,
         height,
         debug,
@@ -414,6 +422,7 @@ const LiveSatori = withLive(function ({
     renderType,
   ]);
 
+  // INIT WITH ALL THE OVERRIDES WHEN THE WORKSPACE IS SHARED
   useEffect(() => {
     if (overrideOptions) {
       setWidth(Math.min(overrideOptions.width || 1200, 2000));
@@ -422,13 +431,34 @@ const LiveSatori = withLive(function ({
       setEmojiType(overrideOptions.emojiType || "twemoji");
       setFontEmbed(!!overrideOptions.fontEmbed);
     }
-  }, []);
 
-  useEffect(() => {
     (async () => {
-      setOptions({
-        fonts: await loadDefaultFonts,
-      });
+      if (overrideOptions?.fonts?.length) {
+        const fonts = await Promise.all(
+          overrideOptions.fonts.map(async (font) => {
+            try {
+              const res = await fetch(
+                `/api/og/font?fonts=${encodeURIComponent(font.name)}`
+              );
+              if (!res.ok) throw new Error();
+
+              const fontData = await res.arrayBuffer();
+              return { ...font, data: fontData };
+            } catch {
+              toast.error(`Failed to load font: ${font.name}`);
+              return null;
+            }
+          })
+        );
+
+        setOptions((prevOptions) => ({
+          ...prevOptions,
+          fonts: fonts.filter(Boolean) as Font[],
+        }));
+      } else {
+        const defaultFonts = await loadDefaultFonts;
+        setOptions((prevOptions) => ({ ...prevOptions, fonts: defaultFonts }));
+      }
       setLoadingResources(false);
     })();
   }, []);
@@ -470,14 +500,14 @@ const LiveSatori = withLive(function ({
             options.fonts.map(async (prevFont, idx) => {
               const newFont = newData[idx];
               if (
-                prevFont.name === newFont.name &&
+                prevFont.name.trim() === newFont.name.trim() &&
                 prevFont.style === newFont.style &&
                 prevFont.weight === newFont.weight
               ) {
                 return prevFont;
               } else {
                 try {
-                  const data = await await fetch(
+                  const data = await fetch(
                     `/api/og/font?fonts=${encodeURIComponent(newFont.name)}`
                   );
                   if (data.status === 200) {
@@ -505,6 +535,49 @@ const LiveSatori = withLive(function ({
     },
     [options?.fonts]
   );
+
+  const handleConfigReset = useCallback(async () => {
+    setOptions({ fonts: await loadDefaultFonts });
+    setWidth(1200);
+    setHeight(630);
+    setDebug(false);
+    setEmojiType("twemoji");
+    setFontEmbed(true);
+  }, []);
+
+  /**
+   * Should return a string like this:
+   * https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Material+Icons
+   */
+  const iframeHTMLFontsURL = useMemo(() => {
+    if (!options?.fonts)
+      return "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Material+Icons";
+
+    const fontMap = new Map<string, Set<string>>();
+
+    for (const font of options.fonts) {
+      const key = font.name.trim().replace(/\s+/g, "+");
+      if (!fontMap.has(key)) {
+        fontMap.set(key, new Set());
+      }
+      fontMap.get(key)!.add(String(font.weight));
+    }
+
+    const familyParams = [...fontMap.entries()]
+      .map(([name, weights]) => `family=${name}:wght@${[...weights].join(";")}`)
+      .join("&");
+
+    return `https://fonts.googleapis.com/css2?${familyParams}`;
+  }, [options?.fonts]);
+
+  /**
+   * To set the first font as the default for the HTML iframe.
+   */
+  const defaultIframeHTMLFont = useMemo(() => {
+    if (!options?.fonts) return "Inter";
+
+    return options.fonts[0].name.trim();
+  }, [options?.fonts]);
 
   return (
     <div className="h-auto xl:h-1/2 w-full flex-1">
@@ -555,7 +628,7 @@ const LiveSatori = withLive(function ({
                     <>
                       <style
                         dangerouslySetInnerHTML={{
-                          __html: `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Material+Icons');body{display:flex;height:100%;margin:0;tab-size:8;font-family:Inter,sans-serif;overflow:hidden}body>div,body>div *{box-sizing:border-box;display:flex}`,
+                          __html: `@import url(${iframeHTMLFontsURL});body{display:flex;height:100%;margin:0;tab-size:8;font-family:${defaultIframeHTMLFont},sans-serif;overflow:hidden}body>div,body>div *{box-sizing:border-box;display:flex}`,
                         }}
                       />
                       {!!live?.element && <live.element />}
@@ -583,9 +656,19 @@ const LiveSatori = withLive(function ({
       </Tabs>
 
       <div className="flex-1 min-h-full rounded-xl bg-background border border-white overflow-hidden">
-        <h2 className="text-black text-sm font-medium m-0 py-1.5 px-2.5 uppercase bg-white border-b-border border-b select-none -tracking-[0.02em]">
-          Configurations
-        </h2>
+        <div className="flex items-center justify-between m-0 py-1 px-2.5 bg-white border-b-border border-b select-none">
+          <h2 className="text-black text-sm font-medium uppercase -tracking-[0.02em]">
+            Configurations
+          </h2>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-black"
+            onClick={handleConfigReset}
+          >
+            Reset
+          </Button>
+        </div>
         <div className="flex px-2.5 flex-col">
           <div className="w-full flex flex-wrap gap-4 py-[16px]">
             <div className="flex gap-2 flex-1 items-center">
@@ -736,35 +819,37 @@ const LiveSatori = withLive(function ({
               Export
             </Label>
             <div className="flex flex-1 flex-wrap gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  className={!result || renderType === "html" ? "disabled" : ""}
-                  href={
+              <Button
+                id="export"
+                variant="outline"
+                size="sm"
+                disabled={!result || renderType === "html"}
+                onClick={() => {
+                  if (!result || renderType === "html") return;
+
+                  const link = document.createElement("a");
+                  link.href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
                     result
-                      ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-                          result
-                        )}`
-                      : undefined
-                  }
-                  target={result ? "_blank" : ""}
-                  download={result ? "image.svg" : false}
-                  rel="noreferrer"
-                >
-                  Export SVG
-                </a>
+                  )}`;
+                  link.download = "image.svg";
+                  link.rel = "noreferrer";
+                  link.target = "_blank";
+                  link.click();
+                }}
+              >
+                Export SVG
               </Button>
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  className={!result || renderType === "html" ? "disabled" : ""}
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!result) return false;
-                    window.open?.("")?.document.write(result);
-                  }}
-                >
-                  View in New Tab ↗
-                </a>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!result || renderType === "html"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!result) return false;
+                  window.open?.("")?.document.write(result);
+                }}
+              >
+                View in New Tab ↗
               </Button>
             </div>
           </div>
@@ -797,7 +882,7 @@ function FontConfig({
               name={`${idx}-name`}
               type="text"
               defaultValue={font.name}
-              placeholder="e.g. Inter"
+              placeholder="e.g. Inter - Respect case|spaces|symbols •not inter/in ter/inTer etc."
             />
             <div className="flex flex-row gap-2">
               <Label htmlFor={`${idx}-style`}>Style</Label>

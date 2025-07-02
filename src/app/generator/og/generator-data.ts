@@ -15,7 +15,7 @@ export const playgroundTabs: TabsData = {
       justifyContent: 'center',
       backgroundColor: '#fff',
       fontSize: 32,
-      fontWeight: 600,
+      fontWeight: 400,
     }}
   >
     <svg
@@ -83,7 +83,7 @@ export const playgroundTabs: TabsData = {
       alignItems: 'center',
       justifyContent: 'center',
       letterSpacing: '-.02em',
-      fontWeight: 700,
+      fontWeight: 400,
       background: 'white',
     }}
   >
