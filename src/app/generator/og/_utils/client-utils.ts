@@ -1,12 +1,17 @@
 import { Font, FontStyle, FontWeight } from "satori";
-import { apis, getIconCode, loadEmoji } from "./twemoji";
-import { languageFontMap } from "./font";
+import {
+  apis,
+  getIconCode,
+  loadEmoji,
+} from "@/app/generator/og/_utils/twemoji";
+import { languageFontMap } from "@/app/generator/og/_utils/font";
 import {
   Component,
   JSXElementConstructor,
   ReactElement,
   ReactNode,
 } from "react";
+import { generateFontConfig } from "./shared-utils";
 
 export async function initDefaultFonts() {
   if (typeof window === "undefined") return [];
@@ -216,4 +221,11 @@ export function resolveReactElement(element: ReactNode): ReactNode {
   }
 
   return element;
+}
+
+export async function fetchFont(font: Omit<Font, "data">): Promise<Font> {
+  const res = await fetch(`/api/og/font?fonts=${generateFontConfig([font])}`);
+  if (!res.ok) throw new Error("Couldn't load font.");
+  const data = await res.arrayBuffer();
+  return { ...font, data };
 }

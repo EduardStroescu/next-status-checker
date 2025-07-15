@@ -6,15 +6,7 @@ declare global {
   }
 }
 
-import "./styles.css";
-import {
-  ComponentType,
-  createElement,
-  Dispatch,
-  FormEvent,
-  SetStateAction,
-  useMemo,
-} from "react";
+import { ComponentType, createElement, FormEvent, useMemo } from "react";
 import satori, { Font, type SatoriOptions } from "satori";
 import { LiveProvider, LiveContext, withLive } from "react-live";
 import { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -27,8 +19,12 @@ import Editor, {
 import * as fflate from "fflate";
 import { Base64 } from "js-base64";
 
-import { type TabsData, playgroundTabs, previewTabs } from "./generator-data";
-import { type apis } from "./twemoji";
+import {
+  type TabsData,
+  playgroundTabs,
+  previewTabs,
+} from "../_utils/generator-data";
+import { type apis } from "../_utils/twemoji";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
@@ -46,19 +42,22 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "./Tabs";
-import { serializeReactElement } from "./server-utils";
+import { serializeReactElement } from "../_utils/server-utils";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
+  fetchFont,
   initDefaultFonts,
   isClassComponent,
   loadDynamicAsset,
   resolveReactElement,
-} from "./client-utils";
+} from "@/app/generator/og/_utils/client-utils";
 import { env } from "@/env/client";
+import { generateFontConfig } from "@/app/generator/og/_utils/shared-utils";
+import Link from "next/link";
 
 const cardNames = Object.keys(playgroundTabs);
-const editedCards: TabsData = { ...playgroundTabs };
+let editedCards: TabsData = { ...playgroundTabs };
 
 // For sharing & resuming.
 const currentOptions = {};
@@ -74,13 +73,18 @@ let overrideOptions: {
 const loadDefaultFonts = initDefaultFonts();
 
 function LiveEditor({ id }: { id: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { onChange } = useContext(LiveContext) as unknown as {
-    onChange: (val: string) => void;
-  };
+  const { onChange } = useContext(LiveContext);
+  const onChangeRef = useRef(onChange);
+  const editorRef = useRef<Monaco["editor"]>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     if (monaco) {
+      editorRef.current = monaco.editor;
       fetch("/monaco-theme.json")
         .then((data) => data.json())
         .then((data) => {
@@ -91,7 +95,7 @@ function LiveEditor({ id }: { id: string }) {
   }, []);
 
   const handleOnMount: OnMount = useCallback(async (monaco) => {
-    if (ref.current) {
+    if (editorContainerRef.current) {
       const relayout = ([e]: ResizeObserverEntry[]) => {
         monaco.layout({
           width: e.borderBoxSize[0].inlineSize,
@@ -99,103 +103,185 @@ function LiveEditor({ id }: { id: string }) {
         });
       };
       const resizeObserver = new ResizeObserver(relayout);
-      resizeObserver.observe(ref.current);
+      resizeObserver.observe(editorContainerRef.current);
     }
   }, []);
 
   const handleOnChange: OnChange = useCallback(
     (newCode) => {
-      // We also update the code in memory so switching tabs will preserve the
-      // edited code (until refreshing).
+      // Update the code in local storage to preserve the edited code.
       editedCards[id] = newCode ?? "";
+      localStorage.setItem("editedCards", JSON.stringify(editedCards));
       onChange(newCode ?? "");
     },
     [id, onChange]
   );
 
-  return (
-    <div ref={ref} className="h-full relative overflow-hidden">
-      <Editor
-        loading={
-          <Spinner fontSize={2}>{`Loading • Loading • Loading • `}</Spinner>
-        }
-        height="100%"
-        theme="IDLE"
-        defaultLanguage="javascript"
-        value={editedCards[id]}
-        onChange={handleOnChange}
-        beforeMount={handleBeforeMount}
-        onMount={handleOnMount}
-        options={{
-          fontFamily: "iaw-mono-var",
-          fontSize: 14,
-          wordWrap: "on",
-          tabSize: 2,
-          minimap: {
-            enabled: false,
-          },
-          smoothScrolling: true,
-          cursorSmoothCaretAnimation: "on",
-          contextmenu: true,
-          automaticLayout: true,
-        }}
-      />
-    </div>
-  );
-}
-
-function EditorPanel({
-  activeCard,
-  setActiveCard,
-}: {
-  activeCard: string;
-  setActiveCard: Dispatch<SetStateAction<string>>;
-}) {
-  const activeCardRef = useRef(activeCard);
-
   useEffect(() => {
-    activeCardRef.current = activeCard;
-  }, [activeCard]);
+    const params = new URL(String(document.location)).searchParams;
+    const shared = params.get("share");
+    const tab = params.get("activeCard") ?? "helloworld";
+
+    // we just need change editedCards on mount
+    if (shared) {
+      try {
+        const decompressedData = fflate.strFromU8(
+          fflate.decompressSync(Base64.toUint8Array(shared))
+        );
+        let card;
+        try {
+          const decoded = JSON.parse(decompressedData);
+          card = decoded.code;
+          overrideOptions = decoded.options;
+        } catch {
+          card = decompressedData;
+        }
+
+        editedCards[tab] = card;
+        onChangeRef.current(editedCards[tab]);
+      } catch {
+        toast.error("Failed to load shared data");
+      }
+    } else {
+      let localOptions;
+      let localCards;
+      try {
+        localOptions = localStorage.getItem("options");
+        if (localOptions) {
+          overrideOptions = JSON.parse(localOptions);
+        }
+      } catch {
+        toast.error("Failed to load saved options");
+      }
+      try {
+        localCards = localStorage.getItem("editedCards");
+        if (localCards) {
+          editedCards = JSON.parse(localCards);
+        }
+        onChangeRef.current(editedCards[tab]);
+      } catch {
+        toast.error("Failed to load saved data");
+      }
+    }
+  }, []);
+
+  const handleReset = useCallback(() => {
+    editedCards[id] = playgroundTabs[id];
+    localStorage.setItem("editedCards", JSON.stringify(editedCards));
+    onChangeRef.current(editedCards[id]);
+    if (editorRef.current) {
+      editorRef.current.getModels()?.[0].setValue(editedCards[id]);
+    }
+    const params = new URL(String(document.location)).searchParams;
+    params.delete("share");
+    window.history.replaceState(null, "", `?${params.toString()}`);
+    toast.success("Content reset");
+  }, [id]);
 
   const handleShare = useCallback(() => {
-    const code = editedCards[activeCardRef.current];
+    const params = new URL(String(document.location)).searchParams;
+    if (!id) return;
+
+    const code = editedCards[id];
     const compressed = Base64.fromUint8Array(
       fflate.deflateSync(
         fflate.strToU8(
           JSON.stringify({
             code,
             options: currentOptions,
-            tab: activeCardRef.current,
           })
         )
       ),
       true
     );
 
-    window.history.replaceState(null, "", "?share=" + compressed);
+    params.set("share", compressed);
+    window.history.replaceState(null, "", `?${params.toString()}`);
     navigator.clipboard.writeText(window.location.href);
     toast.success("Copied to clipboard");
-  }, []);
+  }, [id]);
 
+  return (
+    <div className="flex flex-col h-[500px] xl:h-full bg-background rounded-xl rounded-tl-none border border-white overflow-auto">
+      <div className="py-1 px-2 gap-2 flex justify-end bg-white text-black text-xs select-none">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2"
+          onClick={handleReset}
+        >
+          Reset
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2"
+          onClick={handleShare}
+        >
+          Share
+        </Button>
+      </div>
+      <div className="flex-1">
+        <div
+          ref={editorContainerRef}
+          className="h-full relative overflow-hidden"
+        >
+          <Editor
+            loading={
+              <Spinner fontSize={2}>{`Loading • Loading • Loading • `}</Spinner>
+            }
+            height="100%"
+            theme="IDLE"
+            defaultLanguage="javascript"
+            value={editedCards[id]}
+            onChange={handleOnChange}
+            beforeMount={handleBeforeMount}
+            onMount={handleOnMount}
+            options={{
+              fontFamily: "iaw-mono-var",
+              fontSize: 14,
+              wordWrap: "on",
+              tabSize: 2,
+              minimap: {
+                enabled: false,
+              },
+              smoothScrolling: true,
+              cursorSmoothCaretAnimation: "on",
+              contextmenu: true,
+              automaticLayout: true,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditorPanel({ activeCard }: { activeCard: string }) {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        const code = editedCards[activeCardRef.current];
+
+        const params = new URL(String(document.location)).searchParams;
+        const activeCard = params.get("activeCard") ?? "helloworld";
+        if (!activeCard) return;
+
+        const code = editedCards[activeCard];
         const compressed = Base64.fromUint8Array(
           fflate.deflateSync(
             fflate.strToU8(
               JSON.stringify({
                 code,
                 options: currentOptions,
-                tab: activeCardRef.current,
               })
             )
           ),
           true
         );
 
-        window.history.replaceState(null, "", "?share=" + compressed);
+        params.set("share", compressed);
+        window.history.replaceState(null, "", `?${params.toString()}`);
         toast.success("Saved");
       }
     };
@@ -206,82 +292,17 @@ function EditorPanel({
 
   return (
     <Tabs
+      activeTab={activeCard}
       options={cardNames}
       onChange={(name: string) => {
-        setActiveCard(name);
+        const params = new URL(String(document.location)).searchParams;
+        params.set("activeCard", name);
+        params.delete("share");
+        window.history.replaceState(null, "", `?${params.toString()}`);
       }}
     >
-      <div className="flex flex-col h-[500px] xl:h-full bg-background rounded-xl rounded-tl-none border border-white overflow-auto">
-        <div className="py-1 px-2 gap-2 flex justify-end bg-white text-black text-xs select-none">
-          <ResetCode activeCard={activeCard} />
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2"
-            onClick={handleShare}
-          >
-            Share
-          </Button>
-        </div>
-        <div className="flex-1">
-          <LiveEditor key={activeCard} id={activeCard} />
-        </div>
-      </div>
+      <LiveEditor id={activeCard} />
     </Tabs>
-  );
-}
-
-function ResetCode({ activeCard }: { activeCard: string }) {
-  const { onChange } = useContext(LiveContext);
-  const onChangeRef = useRef(onChange);
-
-  // Keep the ref updated so it's always the latest onChange
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
-
-  useEffect(() => {
-    const params = new URL(String(document.location)).searchParams;
-    const shared = params.get("share");
-    // we just need change editedCards on mount
-    if (shared) {
-      try {
-        const decompressedData = fflate.strFromU8(
-          fflate.decompressSync(Base64.toUint8Array(shared))
-        );
-        let card;
-        let tab;
-        try {
-          const decoded = JSON.parse(decompressedData);
-          card = decoded.code;
-          overrideOptions = decoded.options;
-          tab = decoded.tab || "helloworld";
-        } catch {
-          card = decompressedData;
-        }
-
-        editedCards[tab] = card;
-        onChangeRef.current(editedCards[tab]);
-      } catch {
-        toast.error("Failed to load shared data");
-      }
-    }
-  }, []);
-
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="h-6 px-2"
-      onClick={() => {
-        editedCards[activeCard] = playgroundTabs[activeCard];
-        onChange(editedCards[activeCard]);
-        window.history.replaceState(null, "", "/generator/og");
-        toast.success("Content reset");
-      }}
-    >
-      Reset
-    </Button>
   );
 }
 
@@ -293,7 +314,7 @@ const LiveSatori = withLive(function ({
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(630);
 
-  const [options, setOptions] = useState<Partial<SatoriOptions> | null>(null);
+  const [fonts, setFonts] = useState<SatoriOptions["fonts"] | null>(null);
   const [debug, setDebug] = useState(false);
   const [fontEmbed, setFontEmbed] = useState(true);
   const [emojiType, setEmojiType] = useState<keyof typeof apis>("twemoji");
@@ -304,65 +325,114 @@ const LiveSatori = withLive(function ({
   const [iframeNode, setIframeNode] = useState<HTMLElement | undefined>();
   const [scaleRatio, setScaleRatio] = useState(1);
 
+  const [result, setResult] = useState("");
+  const [renderedTimeSpent, setRenderTime] = useState<number>(0);
+
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const sizeRef = useRef([width, height]);
-
   sizeRef.current = [width, height];
 
   const updateIframeRef = useCallback(
     (node: HTMLIFrameElement) => {
-      if (node) {
-        if (node.contentWindow?.document) {
-          /* Force tailwindcss to create stylesheets on first render */
-          const forceUpdate = () => {
-            return setTimeout(() => {
-              const div = doc.createElement("div");
-              div.classList.add("hidden");
-              doc.body.appendChild(div);
-              setTimeout(() => {
-                doc.body.removeChild(div);
-              }, 300);
-            }, 200);
-          };
-          const doc = node.contentWindow.document;
+      if (node && node.contentWindow?.document) {
+        /* Force tailwindcss to create stylesheets on first render */
+        const doc = node.contentWindow.document;
+
+        if (
+          !doc.head.querySelector("script[src='https://cdn.tailwindcss.com']")
+        ) {
           const script = doc.createElement("script");
           script.src = "https://cdn.tailwindcss.com";
           doc.head.appendChild(script);
           script.addEventListener("load", () => {
-            const configScript = doc.createElement("script");
-            configScript.text = `
-            tailwind.config = {
-              plugins: [{
-                handler({ addBase }) {
-                  addBase({
-                    'html': {
-                      'line-height': 1.2,
-                    }
-                  })
-                }
-              }]
-            }
-          `;
-            doc.head.appendChild(configScript);
+            if (!node.contentWindow) return;
+            (
+              node.contentWindow as Window & { tailwind: { config: object } }
+            ).tailwind.config = {
+              plugins: [
+                {
+                  handler({ addBase }: { addBase: (style: object) => void }) {
+                    addBase({
+                      html: {
+                        lineHeight: "1.2",
+                      },
+                    });
+                  },
+                },
+              ],
+            };
           });
-          const updateClass = () => {
-            Array.from(doc.querySelectorAll("[tw]")).forEach((v) => {
-              const tw = v.getAttribute("tw");
-              if (tw) {
-                v.setAttribute("class", tw);
-                v.removeAttribute("tw");
-              }
-            });
-          };
-          forceUpdate();
-          const observer = new MutationObserver(updateClass);
-          observer.observe(doc.body, { childList: true, subtree: true });
-          setIframeNode(doc.body);
         }
+
+        const updateClass = () => {
+          Array.from(doc.querySelectorAll("[tw]")).forEach((v) => {
+            const tw = v.getAttribute("tw");
+            if (tw) {
+              v.setAttribute("class", tw);
+              v.removeAttribute("tw");
+            }
+          });
+        };
+
+        const observer = new MutationObserver(updateClass);
+        observer.observe(doc.body, { childList: true, subtree: true });
+        setIframeNode(doc.body);
       }
     },
     [setIframeNode]
   );
+
+  // INIT WITH ALL THE OVERRIDES WHEN THE WORKSPACE IS SHARED
+  useEffect(() => {
+    if (overrideOptions) {
+      setWidth(Math.min(overrideOptions.width || 1200, 2000));
+      setHeight(Math.min(overrideOptions.height || 630, 2000));
+      setDebug(!!overrideOptions.debug);
+      setEmojiType(overrideOptions.emojiType || "twemoji");
+      setFontEmbed(!!overrideOptions.fontEmbed);
+    }
+
+    (async () => {
+      if (overrideOptions?.fonts?.length) {
+        const fontData = await Promise.all(
+          overrideOptions.fonts.map(async (font) => {
+            try {
+              return await fetchFont(font);
+            } catch {
+              toast.error(
+                <div className="flex flex-col gap-2 pl-2">
+                  <p>Failed to load font:</p>
+                  <ul className="list-disc list-inside">
+                    <li>Name: {font?.name}</li>
+                    {!!font?.style && (
+                      <li>
+                        Style:{" "}
+                        {font.style[0].toUpperCase() + font.style.slice(1)}
+                      </li>
+                    )}
+                    {font?.weight && <li>Weight: {font.weight}</li>}
+                  </ul>
+                </div>
+              );
+              return null;
+            }
+          })
+        );
+
+        const fonts = fontData.filter(Boolean);
+        if (fonts.length) {
+          setFonts(fonts as Font[]);
+        } else {
+          const defaultFonts = await loadDefaultFonts;
+          setFonts(defaultFonts);
+        }
+      } else {
+        const defaultFonts = await loadDefaultFonts;
+        setFonts(defaultFonts);
+      }
+      setLoadingResources(false);
+    })();
+  }, []);
 
   function updateScaleRatio() {
     if (!previewContainerRef.current) return;
@@ -390,9 +460,6 @@ const LiveSatori = withLive(function ({
     updateScaleRatio();
   }, [width, height]);
 
-  const [result, setResult] = useState("");
-  const [renderedTimeSpent, setRenderTime] = useState<number>(0);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -406,14 +473,14 @@ const LiveSatori = withLive(function ({
       let _result = "";
       let _renderedTimeSpent = 0;
 
-      if (live?.element && options) {
+      if (!!live?.element && fonts) {
         const start = (
           typeof performance !== "undefined" ? performance : Date
         ).now();
         if (renderType !== "html") {
           try {
             _result = await satori(live.element.prototype.render(), {
-              ...options,
+              fonts,
               embedFont: fontEmbed,
               width,
               height,
@@ -431,19 +498,35 @@ const LiveSatori = withLive(function ({
         } else {
           setRenderError(null);
         }
+
         _renderedTimeSpent =
           (typeof performance !== "undefined" ? performance : Date).now() -
           start;
+
+        if (!!Object.keys(currentOptions).length) {
+          localStorage.setItem(
+            "options",
+            JSON.stringify({
+              fonts: fonts.map((font) => ({ ...font, data: undefined })),
+              width,
+              height,
+              debug,
+              emojiType,
+              fontEmbed,
+            })
+          );
+        }
       }
 
       Object.assign(currentOptions, {
-        fonts: options?.fonts,
+        fonts: fonts?.map((font) => ({ ...font, data: undefined })),
         width,
         height,
         debug,
         emojiType,
         fontEmbed,
       });
+
       setResult(_result);
       setRenderTime(_renderedTimeSpent);
     })();
@@ -453,7 +536,7 @@ const LiveSatori = withLive(function ({
     };
   }, [
     live?.element,
-    options,
+    fonts,
     width,
     height,
     debug,
@@ -461,47 +544,6 @@ const LiveSatori = withLive(function ({
     fontEmbed,
     renderType,
   ]);
-
-  // INIT WITH ALL THE OVERRIDES WHEN THE WORKSPACE IS SHARED
-  useEffect(() => {
-    if (overrideOptions) {
-      setWidth(Math.min(overrideOptions.width || 1200, 2000));
-      setHeight(Math.min(overrideOptions.height || 630, 2000));
-      setDebug(!!overrideOptions.debug);
-      setEmojiType(overrideOptions.emojiType || "twemoji");
-      setFontEmbed(!!overrideOptions.fontEmbed);
-    }
-
-    (async () => {
-      if (overrideOptions?.fonts?.length) {
-        const fonts = await Promise.all(
-          overrideOptions.fonts.map(async (font) => {
-            try {
-              const res = await fetch(
-                `/api/og/font?fonts=${encodeURIComponent(font.name)}`
-              );
-              if (!res.ok) throw new Error();
-
-              const fontData = await res.arrayBuffer();
-              return { ...font, data: fontData };
-            } catch {
-              toast.error(`Failed to load font: ${font.name}`);
-              return null;
-            }
-          })
-        );
-
-        setOptions((prevOptions) => ({
-          ...prevOptions,
-          fonts: fonts.filter(Boolean) as Font[],
-        }));
-      } else {
-        const defaultFonts = await loadDefaultFonts;
-        setOptions((prevOptions) => ({ ...prevOptions, fonts: defaultFonts }));
-      }
-      setLoadingResources(false);
-    })();
-  }, []);
 
   const handleUpdateFonts = useCallback(
     async (evt: FormEvent<HTMLFormElement>) => {
@@ -535,9 +577,9 @@ const LiveSatori = withLive(function ({
         [] as FontWithNoData[]
       );
 
-      const newFonts = options?.fonts
+      const newFonts = fonts
         ? await Promise.all(
-            options.fonts.map(async (prevFont, idx) => {
+            fonts.map(async (prevFont, idx) => {
               const newFont = newData[idx];
               if (
                 prevFont.name.trim() === newFont.name.trim() &&
@@ -547,20 +589,24 @@ const LiveSatori = withLive(function ({
                 return prevFont;
               } else {
                 try {
-                  const data = await fetch(
-                    `/api/og/font?fonts=${encodeURIComponent(newFont.name)}`
-                  );
-                  if (data.status === 200) {
-                    const fontData = await data.arrayBuffer();
-                    return {
-                      ...newFont,
-                      data: fontData,
-                    };
-                  }
-                  toast.error("Failed to load font");
-                  return prevFont;
+                  return await fetchFont(newFont);
                 } catch {
-                  toast.error("Failed to load font");
+                  toast.error(
+                    <div className="flex flex-col gap-2 pl-2">
+                      <p>Failed to load font:</p>
+                      <ul className="list-disc list-inside">
+                        <li>Name: {newFont?.name}</li>
+                        {!!newFont?.style && (
+                          <li>
+                            Style:{" "}
+                            {newFont.style[0].toUpperCase() +
+                              newFont.style.slice(1)}
+                          </li>
+                        )}
+                        {newFont?.weight && <li>Weight: {newFont.weight}</li>}
+                      </ul>
+                    </div>
+                  );
                   return prevFont;
                 }
               }
@@ -568,16 +614,13 @@ const LiveSatori = withLive(function ({
           )
         : [];
 
-      setOptions((prevOptions) => ({
-        ...prevOptions,
-        fonts: newFonts,
-      }));
+      setFonts(newFonts);
     },
-    [options?.fonts]
+    [fonts]
   );
 
   const handleConfigReset = useCallback(async () => {
-    setOptions({ fonts: await loadDefaultFonts });
+    setFonts(await loadDefaultFonts);
     setWidth(1200);
     setHeight(630);
     setDebug(false);
@@ -632,38 +675,26 @@ const LiveSatori = withLive(function ({
   }, [live?.element]);
 
   /**
-   * Should return a string like this:
+   * Should return a string similar to this:
    * https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Material+Icons
    */
   const iframeHTMLFontsURL = useMemo(() => {
-    if (!options?.fonts)
+    if (!fonts)
       return "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Material+Icons";
 
-    const fontMap = new Map<string, Set<string>>();
+    const familyParams = generateFontConfig(fonts, true);
 
-    for (const font of options.fonts) {
-      const key = font.name.trim().replace(/\s+/g, "+");
-      if (!fontMap.has(key)) {
-        fontMap.set(key, new Set());
-      }
-      fontMap.get(key)!.add(String(font.weight));
-    }
-
-    const familyParams = [...fontMap.entries()]
-      .map(([name, weights]) => `family=${name}:wght@${[...weights].join(";")}`)
-      .join("&");
-
-    return `https://fonts.googleapis.com/css2?${familyParams}`;
-  }, [options?.fonts]);
+    return `https://fonts.googleapis.com/css2?family=${familyParams}`;
+  }, [fonts]);
 
   /**
    * To set the first font as the default for the HTML iframe.
    */
   const defaultIframeHTMLFont = useMemo(() => {
-    if (!options?.fonts) return "Inter";
+    if (!fonts) return "Inter";
 
-    return options.fonts[0].name.trim();
-  }, [options?.fonts]);
+    return fonts[0].name.trim();
+  }, [fonts]);
 
   return (
     <div className="h-auto xl:h-1/2 w-full flex-1">
@@ -672,7 +703,7 @@ const LiveSatori = withLive(function ({
         //  'svg' | 'png' | 'html' | 'pdf'
         onChange={(text) => setRenderType(text.split(" ")[0].toLowerCase())}
       >
-        <div className="flex flex-col flex-1 relative bg-white overflow-hidden mb-2.5 rounded-b-xl border border-border rounded-tr-xl">
+        <div className="flex flex-col flex-1 relative bg-gray-950 overflow-hidden mb-2.5 rounded-b-xl border border-border rounded-tr-xl">
           {(!!live?.error || !!renderError) && (
             <div className="absolute w-full h-[calc(100%-24px)] py-2.5 px-5 overflow-auto text-red-500 z-15">
               <pre className="m-0 whitespace-pre-wrap text-xs">
@@ -684,12 +715,12 @@ const LiveSatori = withLive(function ({
           {loadingResources && (
             <Spinner
               fontSize={2}
-              className="text-black absolute inset-0 z-10"
+              className="absolute inset-0 z-10"
             >{`Loading • Loading • Loading • `}</Spinner>
           )}
 
           <div
-            className="relative flex w-full h-[500px] xl:h-full  justify-center items-center overflow-hidden"
+            className="relative flex w-full h-[500px] xl:h-full justify-center items-center overflow-hidden"
             ref={previewContainerRef}
             dangerouslySetInnerHTML={
               renderType !== "svg"
@@ -701,7 +732,6 @@ const LiveSatori = withLive(function ({
           >
             {renderType === "html" ? (
               <iframe
-                key="html"
                 ref={updateIframeRef}
                 width={width}
                 height={height}
@@ -714,7 +744,7 @@ const LiveSatori = withLive(function ({
                     <>
                       <style
                         dangerouslySetInnerHTML={{
-                          __html: `@import url(${iframeHTMLFontsURL});body{display:flex;height:100%;margin:0;tab-size:8;font-family:${defaultIframeHTMLFont},sans-serif;overflow:hidden}body>div,body>div *{box-sizing:border-box;display:flex}`,
+                          __html: `@import url('${iframeHTMLFontsURL}');body{display:flex;height:100%;margin:0;tab-size:8;font-family:${defaultIframeHTMLFont};overflow:hidden}body>div,body>div *{box-sizing:border-box;display:flex}`,
                         }}
                       />
                       {!!live?.element && <live.element />}
@@ -725,7 +755,7 @@ const LiveSatori = withLive(function ({
             ) : null}
           </div>
           <Separator />
-          <footer className="flex items-center text-xs bg-background whitespace-nowrap py-1 px-2">
+          <footer className="flex items-center text-xs bg-white text-black whitespace-nowrap py-1 px-2">
             <span className="whitespace-pre overflow-hidden text-ellipsis border-b">
               {renderType === "html"
                 ? "[HTML] Rendered."
@@ -859,10 +889,7 @@ const LiveSatori = withLive(function ({
             />
           </div>
           <Separator />
-          <FontConfig
-            fonts={options?.fonts}
-            handleUpdateFonts={handleUpdateFonts}
-          />
+          <FontConfig fonts={fonts} handleUpdateFonts={handleUpdateFonts} />
           <Separator />
           <div className="w-full flex gap-2 py-4">
             <Label htmlFor="font" className="flex-none w-36">
@@ -937,7 +964,12 @@ const LiveSatori = withLive(function ({
               >
                 View in New Tab ↗
               </Button>
-              <Button variant="outline" size="sm" onClick={handleGenerateOG}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateOG}
+                disabled={!live?.element || !!renderError}
+              >
                 Generate OG Image
               </Button>
             </div>
@@ -952,7 +984,7 @@ function FontConfig({
   fonts,
   handleUpdateFonts,
 }: {
-  fonts: SatoriOptions["fonts"] | undefined;
+  fonts: SatoriOptions["fonts"] | null;
   handleUpdateFonts: (evt: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
@@ -961,7 +993,10 @@ function FontConfig({
       className="flex flex-col gap-2 py-[16px]"
     >
       {fonts?.map((font, idx) => (
-        <div key={font.name + "-" + idx} className="flex flex-row items-center">
+        <div
+          key={font.name + "-" + font.style + "-" + font.weight}
+          className="flex flex-row items-center"
+        >
           <Label htmlFor={`${idx}-name`} className="flex-none w-[140px]">
             Font #{idx + 1}
           </Label>
@@ -1010,14 +1045,11 @@ function FontConfig({
   );
 }
 
-export default function Playground() {
+export default function Playground({ isProUser }: { isProUser: boolean }) {
   const searchParams = useSearchParams();
-  const lastActiveCard = searchParams.get("lastActiveCard");
+  const activeCard = searchParams.get("activeCard") ?? "helloworld";
 
   const [hydrated, setHydrated] = useState(false);
-  const [activeCard, setActiveCard] = useState<string>(
-    lastActiveCard ?? "helloworld"
-  );
 
   const isMobileView = useIsMobile();
 
@@ -1028,28 +1060,83 @@ export default function Playground() {
   /**
    * Replaces all <img src="..."> tags with proxied versions. Otherwise images won't load.
    */
-  const handleTransformCode = useCallback((code: string) => {
-    return code.replace(
-      /<img([^>]*?)\s+src=(["'])(.*?)\2([^\/>]*)\/?>/gi,
-      (_, before, quote, src, after) => {
-        const proxied = `${
-          env.NEXT_PUBLIC_URL
-        }/api/og/image-proxy?url=${encodeURIComponent(src)}`;
-        return `<img${before} src=${quote}${proxied}${quote}${after} />`;
+  const handleTransformCode = useCallback(
+    (code: string) => {
+      const proxied = `${env.NEXT_PUBLIC_URL}/api/og/image-proxy?url=`;
+
+      // Replace all img src and backgroundImage URLs in one pass using a single regex and a replacer function
+      // This reduces two separate passes into one
+      const urlReplaceRegex =
+        /(<img[^>]*\s+src=)(["'])(.*?)\2|backgroundImage:\s*(['"`])url\((['"`]?)(.*?)\5\)\4/gi;
+
+      let wrappedCode = code.replace(
+        urlReplaceRegex,
+        (
+          match,
+          imgStart,
+          imgQuote,
+          imgSrc,
+          bgOuterQuote,
+          bgInnerQuote,
+          bgUrl
+        ) => {
+          if (imgSrc !== undefined) {
+            // img src matched
+            return `${imgStart}${imgQuote}${proxied}${encodeURIComponent(
+              imgSrc
+            )}${imgQuote}`;
+          } else if (bgUrl !== undefined) {
+            // backgroundImage matched
+            return `backgroundImage: ${bgOuterQuote}url(${bgInnerQuote}${proxied}${encodeURIComponent(
+              bgUrl
+            )}${bgInnerQuote})${bgOuterQuote}`;
+          }
+          return match; // fallback, should not happen
+        }
+      );
+
+      if (!isProUser) {
+        // Simplify regex to find last return with JSX fragment, self-closing or normal tags or parens
+        const returnJsxRegex =
+          /return\s*(\(([\s\S]*?)\)|(<[a-zA-Z][^>]*\/>)|(<[a-zA-Z][\s\S]*?<\/[a-zA-Z][^>]*>)|(<>[\s\S]*?<\/>))/gm;
+
+        const matches = [...code.matchAll(returnJsxRegex)];
+        const last = matches.at(-1);
+
+        if (last && last.index !== undefined) {
+          // Extract JSX content, some captures optional, pick first non-null
+          const jsxContent = last[2] ?? last[3] ?? last[4] ?? last[5];
+          const start = last.index;
+          const end = start + last[0].length;
+
+          const before = code.slice(0, start);
+          const after = code.slice(end);
+
+          // Compose new code with the wrapping div and copyright img
+          wrappedCode = `${before}return (\n<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n\t${jsxContent.trim()}\n\t<img src='${proxied}https://www.whiteriverdesign.com/wp-content/uploads/2013/07/copyright.png' style={{position: 'absolute', bottom: 0, right: 0, width: 200, height: 50}} />\n</div>\n)${after}`;
+        } else {
+          // No return statement found, wrap whole code with div and copyright img
+          wrappedCode = `<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n${code}\n<img src='${proxied}https://www.whiteriverdesign.com/wp-content/uploads/2013/07/copyright.png' style={{position: 'absolute', bottom: 0, right: 0, width: 200, height: 50}} />\n</div>`;
+        }
       }
-    );
-  }, []);
+
+      return wrappedCode;
+    },
+    [isProUser]
+  );
 
   return (
     <div className="playground-body w-full xl:h-[100dvh] overflow-x-hidden">
       <nav className="flex gap-2 text-black bg-white px-4 items-center h-8">
-        <Image
-          src="/favicon.png"
-          alt="StatusChecker"
-          width={20}
-          height={20}
-          priority
-        />
+        <Link href="/">
+          <Image
+            src="/favicon.png"
+            alt="StatusChecker"
+            width={20}
+            height={20}
+            priority
+          />
+        </Link>
         <h1 className="font-medium text-sm">OG Image Generator</h1>
       </nav>
       <div className="flex flex-col xl:flex-row w-full h-[calc(100%-40px)] p-2 gap-2">
@@ -1057,27 +1144,21 @@ export default function Playground() {
           code={editedCards[activeCard]}
           transformCode={handleTransformCode}
         >
-          {hydrated ? (
+          {hydrated && (
             <>
               {isMobileView ? (
                 <LiveSatori />
               ) : (
-                <EditorPanel
-                  activeCard={activeCard}
-                  setActiveCard={setActiveCard}
-                />
+                <EditorPanel activeCard={activeCard} />
               )}
 
               {isMobileView ? (
-                <EditorPanel
-                  activeCard={activeCard}
-                  setActiveCard={setActiveCard}
-                />
+                <EditorPanel activeCard={activeCard} />
               ) : (
                 <LiveSatori />
               )}
             </>
-          ) : null}
+          )}
         </LiveProvider>
       </div>
     </div>

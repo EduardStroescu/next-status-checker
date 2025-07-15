@@ -1,13 +1,16 @@
 import { createElement, ReactElement, ReactNode } from "react";
 import { Font } from "satori";
+import { generateFontConfig } from "@/app/generator/og/_utils/shared-utils";
 
-export async function loadGoogleFont(font: Font, text?: string) {
-  let url = `https://fonts.googleapis.com/css2?family=${font.name}`;
+export async function loadGoogleFont(font: Omit<Font, "data">, text?: string) {
+  let url = `https://fonts.googleapis.com/css2?family=${generateFontConfig([
+    font,
+  ])}`;
 
   if (text) {
-    url = `https://fonts.googleapis.com/css2?family=${
-      font.name
-    }&text=${encodeURIComponent(text)}`;
+    url = `https://fonts.googleapis.com/css2?family=${generateFontConfig([
+      font,
+    ])}&text=${encodeURIComponent(text)}`;
   }
 
   const css = await (
@@ -33,7 +36,7 @@ export async function loadGoogleFont(font: Font, text?: string) {
     }
   }
 
-  throw new Error("failed to load font data");
+  throw new Error("Failed to load font data");
 }
 
 type SerializableReactElement =

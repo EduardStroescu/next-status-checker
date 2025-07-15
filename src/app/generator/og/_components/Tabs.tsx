@@ -4,13 +4,14 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 interface TabsProps {
+  activeTab?: string;
   options: string[];
   onChange: (value: string) => void;
   children: React.ReactNode;
 }
 
-export function Tabs({ options, onChange, children }: TabsProps) {
-  const [active, setActive] = useState(options[0]);
+export function Tabs({ activeTab, options, onChange, children }: TabsProps) {
+  const [active, setActive] = useState(activeTab ?? options[0]);
 
   return (
     <div className="flex flex-col flex-1 grow w-full h-full">

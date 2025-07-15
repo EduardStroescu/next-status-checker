@@ -1,13 +1,13 @@
 import {
   deserializeReactElement,
   loadGoogleFont,
-} from "@/app/generator/og/server-utils";
+} from "@/app/generator/og/_utils/server-utils";
 import { ImageResponse } from "next/og";
 import { NextRequest, NextResponse } from "next/server";
 import * as fflate from "fflate";
 import { Base64 } from "js-base64";
 import { Font } from "node_modules/next/dist/compiled/@vercel/og/satori";
-import { apis } from "@/app/generator/og/twemoji";
+import { apis } from "@/app/generator/og/_utils/twemoji";
 
 export const runtime = "edge";
 
@@ -33,13 +33,12 @@ export async function GET(
       debug: boolean;
       emojiType: keyof typeof apis;
       fontEmbed: boolean;
-      fonts: Font[];
+      fonts: Omit<Font, "data">[];
     } = decoded.options;
 
-    // Deserialize to React element (you must implement or import this)
+    // Deserialize to React element
     const reactElement = deserializeReactElement(code);
 
-    // Load fonts, etc (example)
     const fonts = await Promise.all(
       satoriOptions.fonts.map((font) => loadGoogleFont(font))
     );

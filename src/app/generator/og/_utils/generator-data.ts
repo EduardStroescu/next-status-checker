@@ -5,7 +5,8 @@ export type TabsData = {
 };
 
 export const playgroundTabs: TabsData = {
-  helloworld: `<div
+  helloworld: `
+  <div
     style={{
       height: '100%',
       width: '100%',
@@ -29,7 +30,8 @@ export const playgroundTabs: TabsData = {
     <div style={{ marginTop: 40 }}>Hello, World</div>
   </div>
   `,
-  Vercel: `<div
+  Vercel: `
+  <div
     style={{
       height: '100%',
       width: '100%',
@@ -75,7 +77,8 @@ export const playgroundTabs: TabsData = {
     </div>
   </div>
   `,
-  rauchg: `<div
+  rauchg: `
+  <div
     style={{
       display: 'flex',
       height: '100%',
@@ -132,11 +135,10 @@ export const playgroundTabs: TabsData = {
     </div>
   </div>
   `,
-  "Tailwind (experimental)": `// Modified based on https://tailwindui.com/components/marketing/sections/cta-sections
-  
+  "Tailwind (experimental)": `  
   <div tw="flex flex-col w-full h-full items-center justify-center bg-white">
     <div tw="bg-gray-50 flex w-full">
-      <div tw="flex flex-col md:flex-row w-full py-12 px-4 md:items-center justify-between p-8">
+      <div tw="flex flex-col md:flex-row w-full py-12 px-4 md:items-center justify-between">
         <h2 tw="flex flex-col text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 text-left">
           <span>Ready to dive in?</span>
           <span tw="text-indigo-600">Start your free trial today.</span>
@@ -152,7 +154,8 @@ export const playgroundTabs: TabsData = {
       </div>
     </div>
   </div>`,
-  Gradients: `<div
+  Gradients: `
+  <div
     style={{
       display: 'flex',
       height: '100%',
@@ -171,7 +174,7 @@ export const playgroundTabs: TabsData = {
       style={{
         backgroundImage: 'linear-gradient(90deg, rgb(0, 124, 240), rgb(0, 223, 216))',
         backgroundClip: 'text',
-        '-webkit-background-clip': 'text',
+        WebkitBackgroundClip: 'text',
         color: 'transparent',
       }}
     >
@@ -181,7 +184,7 @@ export const playgroundTabs: TabsData = {
       style={{
         backgroundImage: 'linear-gradient(90deg, rgb(121, 40, 202), rgb(255, 0, 128))',
         backgroundClip: 'text',
-        '-webkit-background-clip': 'text',
+        WebkitBackgroundClip: 'text',
         color: 'transparent',
       }}
     >
@@ -191,7 +194,7 @@ export const playgroundTabs: TabsData = {
       style={{
         backgroundImage: 'linear-gradient(90deg, rgb(255, 77, 77), rgb(249, 203, 40))',
         backgroundClip: 'text',
-        '-webkit-background-clip': 'text',
+        WebkitBackgroundClip: 'text',
         color: 'transparent',
       }}
     >
@@ -199,7 +202,8 @@ export const playgroundTabs: TabsData = {
     </div>
   </div>
   `,
-  "Color Models": `<div
+  "Color Models": `
+  <div
     style={{
       display: 'flex',
       justifyContent: 'space-between',
@@ -253,7 +257,8 @@ export const playgroundTabs: TabsData = {
       </div>
     </div>
   </div>`,
-  Advanced: `// Fallback fonts and Emoji are dynamically loaded
+  Advanced: `
+  // Fallback fonts and Emoji are dynamically loaded
   // from Google Fonts and CDNs in this demo.
   
   // You can also return a function component in the playground.

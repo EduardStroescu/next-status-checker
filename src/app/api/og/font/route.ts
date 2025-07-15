@@ -1,4 +1,4 @@
-import { FontDetector, languageFontMap } from "@/app/generator/og/font";
+import { FontDetector, languageFontMap } from "@/app/generator/og/_utils/font";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
@@ -33,8 +33,6 @@ function encodeFontInfoAsArrayBuffer(code: string, fontData: ArrayBuffer) {
 }
 
 export async function GET(req: NextRequest) {
-  if (req.nextUrl.pathname !== "/api/og/font") return;
-
   const { searchParams } = new URL(req.url);
 
   const fonts = searchParams.getAll("fonts");
@@ -42,7 +40,9 @@ export async function GET(req: NextRequest) {
 
   if (!fonts || fonts.length === 0) return;
   if (!text) {
-    return new NextResponse(await fetchFont(fonts[0]), {
+    const font = await fetchFont(fonts[0]);
+    if (!font) return new NextResponse("Font not found", { status: 404 });
+    return new NextResponse(font, {
       headers: {
         "Content-Type": "font/woff",
         "Cache-Control": "public, max-age=31536000, immutable",
@@ -94,30 +94,52 @@ async function fetchFont(
   text?: string
 ): Promise<ArrayBuffer | null> {
   let API = `https://fonts.googleapis.com/css2?family=${font}`;
-
   if (text) {
-    API = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(
-      text
-    )}`;
+    API += `&text=${encodeURIComponent(text)}`;
   }
 
-  const css = await (
-    await fetch(API, {
+  let css: string;
+
+  try {
+    const res = await fetch(API, {
       headers: {
         // Make sure it returns TTF.
         "User-Agent":
           "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1",
       },
-    })
-  ).text();
+    });
 
-  const resource = css.match(
-    /src: url\((.+)\) format\('(opentype|truetype)'\)/
-  );
+    if (!res.ok) {
+      return null;
+    }
 
-  if (!resource) return null;
+    css = await res.text();
+  } catch {
+    return null;
+  }
 
-  const res = await fetch(resource[1]);
+  if (!css.includes("@font-face")) {
+    console.warn(`No @font-face found for font: ${font}`);
+    return null;
+  }
 
-  return res.arrayBuffer();
+  const match = css.match(/src: url\((.+?)\) format\('(opentype|truetype)'\)/);
+  if (!match) {
+    console.warn(`No valid font URL found for font: ${font}`);
+    return null;
+  }
+
+  try {
+    const res = await fetch(match[1]);
+    if (!res.ok) {
+      console.error(
+        `Failed to fetch font file: ${res.status} ${res.statusText}`
+      );
+      return null;
+    }
+    return await res.arrayBuffer();
+  } catch (err) {
+    console.error("Error fetching font file:", err);
+    return null;
+  }
 }

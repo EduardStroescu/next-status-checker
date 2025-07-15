@@ -1,7 +1,9 @@
 import { Metadata } from "next";
-import Playground from "./og-generator";
+import Playground from "./_components/og-generator";
 import { Suspense } from "react";
 import { Spinner } from "@/components/ui/Spinner";
+import { getCurrentUser } from "@/lib/server/helpers";
+import "./styles.css";
 
 export const metadata: Metadata = {
   title: "OG Generator",
@@ -23,14 +25,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function OGGeneratorPage() {
+export default async function OGGeneratorPage() {
+  const user = await getCurrentUser();
   return (
     <Suspense
       fallback={
-        <Spinner fontSize={2}>{`Loading • Loading • Loading • `}</Spinner>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <Spinner fontSize={2}>{`Loading • Loading • Loading • `}</Spinner>
+        </div>
       }
     >
-      <Playground />
+      <Playground isProUser={!!user} />
     </Suspense>
   );
 }

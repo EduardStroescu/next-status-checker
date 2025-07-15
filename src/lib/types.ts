@@ -1,6 +1,10 @@
 import { history_table, users_table } from "./db/schema";
 import { projects_table } from "./db/schema";
 
+export type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
 export type User = typeof users_table.$inferSelect;
 export type SafeUser = Omit<User, "password">;
 
