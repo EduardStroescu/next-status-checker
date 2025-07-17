@@ -2,7 +2,7 @@ import {
   deserializeReactElement,
   loadGoogleFont,
 } from "@/app/generator/og/_utils/server-utils";
-import { ImageResponse } from "next/og";
+import { ImageResponse } from "@vercel/og";
 import { NextRequest, NextResponse } from "next/server";
 import * as fflate from "fflate";
 import { Base64 } from "js-base64";
@@ -46,7 +46,7 @@ export async function GET(
     if (!reactElement)
       return new NextResponse("Error generating image", { status: 500 });
 
-    // Render OG image using next/og
+    // Render OG image using vercel/og
     return new ImageResponse(reactElement, {
       width: satoriOptions.width || 1200,
       height: satoriOptions.height || 630,

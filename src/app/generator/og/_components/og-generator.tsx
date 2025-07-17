@@ -6,7 +6,14 @@ declare global {
   }
 }
 
-import { ComponentType, createElement, FormEvent, useMemo } from "react";
+import {
+  ComponentType,
+  createElement,
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+  useMemo,
+} from "react";
 import satori, { Font, type SatoriOptions } from "satori";
 import { LiveProvider, LiveContext, withLive } from "react-live";
 import { useEffect, useState, useRef, useContext, useCallback } from "react";
@@ -308,8 +315,10 @@ function EditorPanel({ activeCard }: { activeCard: string }) {
 
 const LiveSatori = withLive(function ({
   live,
+  setWatermarkWidth,
 }: {
   live?: { element: ComponentType; error: string };
+  setWatermarkWidth: Dispatch<SetStateAction<number>>;
 }) {
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(630);
@@ -433,6 +442,10 @@ const LiveSatori = withLive(function ({
       setLoadingResources(false);
     })();
   }, []);
+
+  useEffect(() => {
+    setWatermarkWidth(Math.min(width, 240));
+  }, [setWatermarkWidth, width]);
 
   function updateScaleRatio() {
     if (!previewContainerRef.current) return;
@@ -794,7 +807,7 @@ const LiveSatori = withLive(function ({
               <Slider
                 value={[width]}
                 onValueChange={(e) => setWidth(e[0])}
-                min={100}
+                min={0}
                 max={1200}
                 step={1}
               />
@@ -803,7 +816,7 @@ const LiveSatori = withLive(function ({
                 type="number"
                 value={width}
                 onChange={(e) => setWidth(Number(e.target.value))}
-                min={100}
+                min={0}
                 max={1200}
                 step={1}
                 className="max-w-fit"
@@ -818,7 +831,7 @@ const LiveSatori = withLive(function ({
               <Slider
                 value={[height]}
                 onValueChange={(e) => setHeight(e[0])}
-                min={100}
+                min={0}
                 max={1200}
                 step={1}
               />
@@ -827,7 +840,7 @@ const LiveSatori = withLive(function ({
                 type="number"
                 value={height}
                 onChange={(e) => setHeight(Number(e.target.value))}
-                min={100}
+                min={0}
                 max={1200}
                 step={1}
                 className="max-w-fit"
@@ -1048,6 +1061,7 @@ function FontConfig({
 export default function Playground({ isProUser }: { isProUser: boolean }) {
   const searchParams = useSearchParams();
   const activeCard = searchParams.get("activeCard") ?? "helloworld";
+  const [watermarkWidth, setWatermarkWidth] = useState(240);
 
   const [hydrated, setHydrated] = useState(false);
 
@@ -1113,21 +1127,23 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
           const after = code.slice(end);
 
           // Compose new code with the wrapping div and copyright img
-          wrappedCode = `${before}return (\n<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n\t${jsxContent.trim()}\n\t<img src='${proxied}https://www.whiteriverdesign.com/wp-content/uploads/2013/07/copyright.png' style={{position: 'absolute', bottom: 0, right: 0, width: 200, height: 50}} />\n</div>\n)${after}`;
+          wrappedCode = `${before}return (\n<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n\t${jsxContent.trim()}\n\t<img src='${
+            env.NEXT_PUBLIC_URL
+          }/watermark.png' style={{position: 'absolute', bottom: 0, right: 0, width: ${watermarkWidth}}} />\n</div>\n)${after}`;
         } else {
           // No return statement found, wrap whole code with div and copyright img
-          wrappedCode = `<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n${code}\n<img src='${proxied}https://www.whiteriverdesign.com/wp-content/uploads/2013/07/copyright.png' style={{position: 'absolute', bottom: 0, right: 0, width: 200, height: 50}} />\n</div>`;
+          wrappedCode = `<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n${code}\n<img src='${env.NEXT_PUBLIC_URL}/watermark.png' style={{position: 'absolute', bottom: 0, right: 0, width: ${watermarkWidth}}} />\n</div>`;
         }
       }
 
       return wrappedCode;
     },
-    [isProUser]
+    [isProUser, watermarkWidth]
   );
 
   return (
     <div className="playground-body w-full xl:h-[100dvh] overflow-x-hidden">
-      <nav className="flex gap-2 text-black bg-white px-4 items-center h-8">
+      <nav className="flex gap-2 text-black bg-white px-4 items-center h-8 stroke-cyan-500">
         <Link href="/">
           <Image
             src="/favicon.png"
@@ -1147,7 +1163,7 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
           {hydrated && (
             <>
               {isMobileView ? (
-                <LiveSatori />
+                <LiveSatori setWatermarkWidth={setWatermarkWidth} />
               ) : (
                 <EditorPanel activeCard={activeCard} />
               )}
@@ -1155,7 +1171,7 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
               {isMobileView ? (
                 <EditorPanel activeCard={activeCard} />
               ) : (
-                <LiveSatori />
+                <LiveSatori setWatermarkWidth={setWatermarkWidth} />
               )}
             </>
           )}
