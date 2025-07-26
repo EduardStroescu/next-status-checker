@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/(.*)", // all routes
+        source: "/((?!api/).*)", // all routes
         headers: [
           {
             key: "X-Content-Type-Options",
@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/api/:path*", // apply to all API routes
+        source: "/((?!api/og).*)", // apply to all API routes
         headers: [
           {
             key: "Access-Control-Allow-Origin",
@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
             value: "Content-Type, Authorization",
           },
           { key: "Access-Control-Allow-Credentials", value: "true" },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
         ],
       },
     ];

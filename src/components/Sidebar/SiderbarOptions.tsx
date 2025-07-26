@@ -5,6 +5,9 @@ import { groupProjectsByCategory } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/server/helpers";
 import { SearchForm } from "./SearchForm";
 import { fetchAllProjects } from "@/lib/server/queries";
+import { NavTools } from "./NavTools";
+
+const navTools = [{ name: "OG Generator", url: "/generator/og" }];
 
 export async function SidebarOptions() {
   const response = await fetchAllProjects();
@@ -19,6 +22,7 @@ export async function SidebarOptions() {
       <SearchForm searchItems={navMain} />
       <SidebarContent>
         <NavMain items={navMain} />
+        <NavTools items={navTools} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

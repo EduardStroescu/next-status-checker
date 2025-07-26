@@ -167,8 +167,8 @@ export default function SignupPage() {
           )}
         </div>
         <Button
-          disabled={isSubmitting}
-          aria-disabled={isSubmitting}
+          disabled={isSubmitting || SIGNUP_CLOSED}
+          aria-disabled={isSubmitting || SIGNUP_CLOSED}
           variant="secondary"
           type="submit"
           className="rounded-full"
