@@ -2,10 +2,10 @@ import { SidebarContent, SidebarFooter } from "../ui/sidebar";
 import NavMain from "./NavMain";
 import { NavUser } from "./SidebarUser";
 import { groupProjectsByCategory } from "@/lib/utils";
-import { getCurrentUser } from "@/lib/server/helpers";
 import { SearchForm } from "./SearchForm";
 import { fetchAllProjects } from "@/lib/server/queries";
 import { NavTools } from "./NavTools";
+import { getCurrentUser } from "@/lib/auth";
 
 const navTools = [{ name: "OG Generator", url: "/generator/og" }];
 

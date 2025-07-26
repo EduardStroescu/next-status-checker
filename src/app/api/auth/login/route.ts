@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { compare } from "bcrypt";
-import { SignJWT } from "jose";
 import { db } from "@/lib/db/drizzle";
 import { users_table } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { env } from "@/env/server";
 import * as z from "zod/v4";
 import { redirectWithError } from "@/lib/server/helpers";
+import { issueTokens } from "@/lib/auth";
 
 const loginSchema = z.object({
   email: z.email({ error: "A valid email is required" }).toLowerCase(),
@@ -57,29 +56,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const secret = new TextEncoder().encode(env.NEXTAUTH_SECRET!);
-    const accessToken = await new SignJWT({ id: user.id.toString() })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(secret);
-    const refreshToken = await new SignJWT({ id: user.id.toString() })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(secret);
-
     const res = NextResponse.redirect(
       new URL("/dashboard", req.nextUrl.origin)
     );
 
-    res.cookies.set("access_token", accessToken, {
+    const { access_token, refresh_token } = await issueTokens(user.id);
+
+    res.cookies.set("access_token", access_token, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 15 * 60, // 15 minutes
     });
-    res.cookies.set("refresh_token", refreshToken, {
+    res.cookies.set("refresh_token", refresh_token, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",

@@ -5,8 +5,8 @@ import {
   refreshLiveReportForAllSupabaseProjects,
   storeLatestStatusResult,
 } from "@/lib/server/queries";
-import { getCurrentUser } from "@/lib/server/helpers";
 import * as z from "zod/v4";
+import { getCurrentUserWithRefreshAction } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   let ownerId: number | undefined;
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   try {
     if (!ownerId) {
-      const user = await getCurrentUser();
+      const user = await getCurrentUserWithRefreshAction();
       if (!user)
         return NextResponse.json(
           { error: "Not logged in and no ownerId provided" },

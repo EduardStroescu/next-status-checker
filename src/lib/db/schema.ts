@@ -39,6 +39,31 @@ export const users_table = createTable(
 
 export const usersRelations = relations(users_table, ({ many }) => ({
   projects: many(projects_table),
+  sessions: many(sessions_table),
+}));
+
+export const sessions_table = createTable(
+  "sessions_table",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement()
+      .notNull(),
+    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+    refreshToken: text("refreshToken").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (table) => [
+    index("user_idx").on(table.userId),
+    index("refresh_token_idx").on(table.refreshToken),
+  ]
+);
+
+export const sessionsRelations = relations(sessions_table, ({ one }) => ({
+  user: one(users_table, {
+    fields: [sessions_table.userId],
+    references: [users_table.id],
+  }),
 }));
 
 export const projects_table = createTable(
@@ -53,10 +78,10 @@ export const projects_table = createTable(
 
     name: text("name").notNull(),
     image: text("image"),
-    url: text().notNull(),
-    healthCheckUrl: text(),
-    dbURL: text(),
-    dbKey: text(),
+    url: text("url").notNull(),
+    healthCheckUrl: text("healthCheckUrl"),
+    dbURL: text("dbURL"),
+    dbKey: text("dbKey"),
     category: text("category").notNull(),
     enabled: boolean("enabled").notNull().default(true),
   },

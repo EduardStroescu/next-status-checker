@@ -1,11 +1,10 @@
-import { env } from "@/env/server";
+import { issueTokens } from "@/lib/auth";
 import { db } from "@/lib/db/drizzle";
 import { users_table } from "@/lib/db/schema";
 import { signupSchema } from "@/lib/schemas";
 import { CustomError } from "@/lib/utils";
 import { hash } from "bcrypt";
 import { eq } from "drizzle-orm";
-import { SignJWT } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -41,26 +40,16 @@ export async function POST(req: NextRequest) {
 
     if (!user) throw new Error("Could not create user");
 
-    const secret = new TextEncoder().encode(env.NEXTAUTH_SECRET);
-    const accessToken = await new SignJWT({ id: user.id.toString() })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(secret);
-    const refreshToken = await new SignJWT({ id: user.id.toString() })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(secret);
+    const { access_token, refresh_token } = await issueTokens(user.id);
 
     const res = NextResponse.redirect(new URL("/", req.url));
-    res.cookies.set("access_token", accessToken, {
+    res.cookies.set("access_token", access_token, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 15 * 60, // 15 minutes
     });
-    res.cookies.set("refresh_token", refreshToken, {
+    res.cookies.set("refresh_token", refresh_token, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",

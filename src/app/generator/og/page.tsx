@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import Playground from "./_components/og-generator";
 import { Suspense } from "react";
 import { Spinner } from "@/components/ui/Spinner";
-import { getCurrentUser } from "@/lib/server/helpers";
 import "./styles.css";
+import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "OG Generator",

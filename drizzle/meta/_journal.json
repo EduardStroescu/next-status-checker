@@ -36,6 +36,20 @@
       "when": 1750453824059,
       "tag": "0004_tired_eternals",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "1",
+      "when": 1753389871418,
+      "tag": "0005_fuzzy_kingpin",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "1",
+      "when": 1753393471839,
+      "tag": "0006_clever_mojo",
+      "breakpoints": true
     }
   ]
 }

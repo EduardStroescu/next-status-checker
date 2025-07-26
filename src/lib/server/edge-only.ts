@@ -1,7 +1,7 @@
 import { env } from "@/env/server";
 import { jwtVerify } from "jose";
 
-export const decryptAndValidate = async (
+export const decryptAndValidateJWT = async (
   token: string
 ): Promise<{ id: string } | null> => {
   try {

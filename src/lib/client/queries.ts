@@ -1,7 +1,9 @@
 import { Project } from "../types";
 
 export const getProjectDetails = async (projectId: string) => {
-  const res = await fetch(`/api/projects/${projectId}`);
+  const res = await fetch(`/api/projects/${projectId}`, {
+    credentials: "include",
+  });
 
   if (!res.ok) {
     throw new Error("Failed to fetch project details");

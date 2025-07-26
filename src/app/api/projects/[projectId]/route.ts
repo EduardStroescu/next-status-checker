@@ -1,6 +1,6 @@
+import { getCurrentUserWithRefreshAction } from "@/lib/auth";
 import { db } from "@/lib/db/drizzle";
 import { history_table, projects_table } from "@/lib/db/schema";
-import { getCurrentUser } from "@/lib/server/helpers";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import * as z from "zod/v4";
@@ -19,7 +19,7 @@ export async function GET(
   }
 
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserWithRefreshAction();
     if (!user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

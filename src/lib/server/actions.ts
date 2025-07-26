@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCurrentUser, getServerDataSafe } from "./helpers";
+import { getServerDataSafe } from "./helpers";
 import { db } from "../db/drizzle";
 import { history_table, projects_table } from "../db/schema";
 import { and, eq } from "drizzle-orm";
@@ -17,6 +17,7 @@ import {
   getLiveReportForSupabase,
   storeLatestStatusResult,
 } from "./queries";
+import { getCurrentUserWithRefreshAction } from "../auth";
 
 export const switchProjectStatusAction = async (
   projectId: Project["id"],
@@ -26,7 +27,7 @@ export const switchProjectStatusAction = async (
   if (!idParse.success)
     throw new CustomError("Invalid project id provided", { statusCode: 400 });
 
-  const user = await getCurrentUser();
+  const user = await getCurrentUserWithRefreshAction();
   if (!user) redirect("/login");
 
   return await getServerDataSafe(async () => {
@@ -45,7 +46,7 @@ export const switchProjectStatusAction = async (
  * Used on the client side with tanstack query, should throw errors.
  */
 export const createProjectAction = async (data: CreateProject) => {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserWithRefreshAction();
   if (!user) redirect("/login");
 
   const [insertResult] = await db
@@ -98,7 +99,7 @@ export const updateProjectAction = async (data: UpdateProject) => {
   if (!idResult.success)
     return { success: false, message: "Invalid project ID" };
 
-  const user = await getCurrentUser();
+  const user = await getCurrentUserWithRefreshAction();
   if (!user) redirect("/login");
 
   delete data.id;
@@ -157,7 +158,7 @@ export const deleteProjectAction = async (projectId: Project["id"]) => {
     return { success: false, message: "Invalid project ID" };
   }
 
-  const user = await getCurrentUser();
+  const user = await getCurrentUserWithRefreshAction();
   if (!user) redirect("/login");
 
   const [deleteResult]: SingleStoreRawQueryResult = await db
@@ -189,7 +190,7 @@ export const refreshIndividualProjectAction = async (
   if (!idParse.success)
     throw new CustomError("Invalid project id provided", { statusCode: 400 });
 
-  const user = await getCurrentUser();
+  const user = await getCurrentUserWithRefreshAction();
   if (!user) redirect("/login");
 
   return await getServerDataSafe(async () => {

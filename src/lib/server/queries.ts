@@ -3,7 +3,7 @@ import "server-only";
 import { history_table, projects_table } from "../db/schema";
 import { redirect } from "next/navigation";
 import { db } from "../db/drizzle";
-import { getCurrentUser, getServerDataSafe } from "./helpers";
+import { getServerDataSafe } from "./helpers";
 import { createClient, PostgrestError } from "@supabase/supabase-js";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { CustomError } from "../utils";
@@ -15,6 +15,7 @@ import {
   ProjectWithHistory,
   SafeUser,
 } from "../types";
+import { getCurrentUser } from "../auth";
 
 export const fetchAllProjects = async () => {
   const user = await getCurrentUser();
