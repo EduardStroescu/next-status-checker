@@ -3,7 +3,6 @@ import { DataTable } from "@/components/DataTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ProjectCard from "@/components/ProjectCard";
 import { processHistoryForChart } from "@/lib/utils";
-import ErrorComponent from "@/components/ErrorComponent";
 import { fetchProjectWithHistory } from "@/lib/server/queries";
 
 export default async function ProjectModal({
@@ -16,7 +15,7 @@ export default async function ProjectModal({
 
   const response = await fetchProjectWithHistory(projectId);
 
-  if (!response.success) return <ErrorComponent message={response.message} />;
+  if (!response.success) throw new Error("Could not fetch project details.");
 
   const projectDetails = response.data;
   const projectHistory = processHistoryForChart(projectDetails.history);

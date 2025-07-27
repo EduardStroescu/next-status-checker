@@ -13,20 +13,48 @@ export const playgroundTabs: TabsData = {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#fff',
-      fontSize: 32,
-      fontWeight: 400,
+      fontSize: 98,
+      color: "white",
     }}
   >
+    <img src="https://img.freepik.com/free-vector/abstract-banner-background-with-abstract-topography-design_1048-12032.jpg?t=st%3D1753642738~exp%3D1753646338~hmac%3D65f55d8e767e5029915c6b1c24070e2c82015a1a4ca71def530cfb4833fc047c&w=1200" style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      filter: "blur(5px)"
+    }}
+      width="100%" height="100%" />
+
+    <svg style={{
+      position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        opacity: 0.05
+    }} viewBox="0 0 200 200" xmlns='http://www.w3.org/2000/svg'>
+      <filter id='noiseFilter'>
+        <feTurbulence 
+          type='fractalNoise' 
+          baseFrequency='4' 
+          numOctaves='2' 
+          stitchTiles='stitch' />
+      </filter>
+      <rect width='100%' height='100%' filter='url(#noiseFilter)' />
+    </svg>
+
     <svg
-      width="75"
+      width="289"
       viewBox="0 0 75 65"
-      fill="#000"
+      fill="#fff"
       style={{ margin: '0 75px' }}
     >
       <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
     </svg>
-    <div style={{ marginTop: 40 }}>Hello, World</div>
+
+    <div style={{ marginTop: 40}}>OG|GENERATOR</div>
   </div>
   `,
   Vercel: `<div
