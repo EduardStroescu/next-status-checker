@@ -23,7 +23,8 @@ export const playgroundTabs: TabsData = {
       left: 0,
       width: "100%",
       height: "100%",
-      filter: "blur(5px)"
+      filter: "blur(5px)",
+      zIndex: 1
     }}
       width="100%" height="100%" />
 
@@ -33,8 +34,9 @@ export const playgroundTabs: TabsData = {
         left: 0,
         width: "100%",
         height: "100%",
-        opacity: 0.05
-    }} viewBox="0 0 200 200" xmlns='http://www.w3.org/2000/svg'>
+        opacity: 0.05,
+        zIndex: 2
+    }} xmlns='http://www.w3.org/2000/svg'>
       <filter id='noiseFilter'>
         <feTurbulence 
           type='fractalNoise' 
@@ -49,12 +51,12 @@ export const playgroundTabs: TabsData = {
       width="289"
       viewBox="0 0 75 65"
       fill="#fff"
-      style={{ margin: '0 75px' }}
+      style={{ margin: '0 75px', zIndex: 3 }}
     >
       <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
     </svg>
 
-    <div style={{ marginTop: 40}}>OG|GENERATOR</div>
+    <div style={{ marginTop: 40, zIndex: 3}}>OG|GENERATOR</div>
   </div>
   `,
   Vercel: `<div

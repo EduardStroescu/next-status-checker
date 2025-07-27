@@ -62,6 +62,7 @@ import {
 import { env } from "@/env/client";
 import { generateFontConfig } from "@/app/generator/og/_utils/shared-utils";
 import Link from "next/link";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const cardNames = Object.keys(playgroundTabs);
 let editedCards: TabsData = { ...playgroundTabs };
@@ -114,14 +115,22 @@ function LiveEditor({ id }: { id: string }) {
     }
   }, []);
 
+  const debouncedSave = useDebounce(
+    (contentToSave) =>
+      localStorage.setItem("editedCards", JSON.stringify(contentToSave)),
+    100
+  );
+
   const handleOnChange: OnChange = useCallback(
     (newCode) => {
-      // Update the code in local storage to preserve the edited code.
       editedCards[id] = newCode ?? "";
-      localStorage.setItem("editedCards", JSON.stringify(editedCards));
+      if (id in editedCards) {
+        // Satori has some issues in which specific code can induce the parser into an infinite loop. If that code is persisted to localStorage, it will cause the page to remain broken until the localStorage is cleared. Adding a debounce to the save process we ensure that if the page freezes it won't persist the code in localStorage.
+        debouncedSave(editedCards);
+      }
       onChange(newCode ?? "");
     },
-    [id, onChange]
+    [debouncedSave, id, onChange]
   );
 
   useEffect(() => {
@@ -173,7 +182,7 @@ function LiveEditor({ id }: { id: string }) {
   }, []);
 
   const handleReset = useCallback(() => {
-    editedCards[id] = playgroundTabs[id];
+    editedCards[id] = playgroundTabs[id] ?? "";
     localStorage.setItem("editedCards", JSON.stringify(editedCards));
     onChangeRef.current(editedCards[id]);
     if (editorRef.current) {
@@ -222,10 +231,14 @@ function LiveEditor({ id }: { id: string }) {
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 px-2"
+          className="h-6 pl-2 pr-0.5 group/share"
           onClick={handleShare}
         >
           Share
+          <kbd className="inline-flex items-center font-semibold gap-px backdrop-contrast-[0%] px-1 py-0 rounded-md select-none text-white">
+            <span className="text-xs">⌘</span>
+            <span className="-my-px">S</span>
+          </kbd>
         </Button>
       </div>
       <div className="flex-1">
@@ -1114,7 +1127,7 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
         const returnJsxRegex =
           /return\s*(\(([\s\S]*?)\)|(<[a-zA-Z][^>]*\/>)|(<[a-zA-Z][\s\S]*?<\/[a-zA-Z][^>]*>)|(<>[\s\S]*?<\/>))/gm;
 
-        const matches = [...code.matchAll(returnJsxRegex)];
+        const matches = [...wrappedCode.matchAll(returnJsxRegex)];
         const last = matches.at(-1);
 
         if (last && last.index !== undefined) {
@@ -1123,8 +1136,8 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
           const start = last.index;
           const end = start + last[0].length;
 
-          const before = code.slice(0, start);
-          const after = code.slice(end);
+          const before = wrappedCode.slice(0, start);
+          const after = wrappedCode.slice(end);
 
           // Compose new code with the wrapping div and copyright img
           wrappedCode = `${before}return (\n<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n\t${jsxContent.trim()}\n\t<img src='${
@@ -1132,7 +1145,7 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
           }/watermark.png' style={{position: 'absolute', bottom: 0, right: 0, width: ${watermarkWidth}}} />\n</div>\n)${after}`;
         } else {
           // No return statement found, wrap whole code with div and copyright img
-          wrappedCode = `<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n${code}\n<img src='${env.NEXT_PUBLIC_URL}/watermark.png' style={{position: 'absolute', bottom: 0, right: 0, width: ${watermarkWidth}}} />\n</div>`;
+          wrappedCode = `<div style={{position: 'relative', display: 'flex', width: '100%', height: '100%'}}>\n${wrappedCode}\n<img src='${env.NEXT_PUBLIC_URL}/watermark.png' style={{position: 'absolute', zIndex: 9999, bottom: 0, right: 0, width: ${watermarkWidth}}} />\n</div>`;
         }
       }
 
@@ -1157,7 +1170,7 @@ export default function Playground({ isProUser }: { isProUser: boolean }) {
       </nav>
       <div className="flex flex-col xl:flex-row w-full h-[calc(100%-40px)] p-2 gap-2">
         <LiveProvider
-          code={editedCards[activeCard]}
+          code={editedCards[activeCard] ?? ""}
           transformCode={handleTransformCode}
         >
           {hydrated && (
