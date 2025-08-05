@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decryptAndValidateJWT } from "./lib/server/edge-only";
+import { env } from "./env/server";
 
 const PUBLIC_PATHS_WITH_REDIRECT = ["/login", "/signup"];
 const PUBLIC_PATHS = [...PUBLIC_PATHS_WITH_REDIRECT, "/generator/og"];
@@ -20,8 +21,22 @@ export async function middleware(req: NextRequest) {
   const refreshValidationSuccess = await decryptAndValidateJWT(refresh_token);
   if (!refreshValidationSuccess) {
     const res = NextResponse.redirect(new URL("/login", req.nextUrl.origin));
-    res.cookies.delete("access_token");
-    res.cookies.delete("refresh_token");
+    res.cookies.delete({
+      name: "access_token",
+      path: "/",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+    });
+    res.cookies.delete({
+      name: "refresh_token",
+      path: "/",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+    });
     return res;
   }
 

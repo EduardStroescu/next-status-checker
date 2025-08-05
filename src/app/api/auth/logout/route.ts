@@ -1,3 +1,4 @@
+import { env } from "@/env/server";
 import {
   deleteSessionFromDatabase,
   getCurrentUserWithRefreshAction,
@@ -16,7 +17,21 @@ export async function POST(req: NextRequest) {
       // Do Nothing
     }
   }
-  res.cookies.delete("access_token");
-  res.cookies.delete("refresh_token");
+  res.cookies.delete({
+    name: "access_token",
+    path: "/",
+    domain:
+      env.NODE_ENV === "production"
+        ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+        : undefined,
+  });
+  res.cookies.delete({
+    name: "refresh_token",
+    path: "/",
+    domain:
+      env.NODE_ENV === "production"
+        ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+        : undefined,
+  });
   return res;
 }

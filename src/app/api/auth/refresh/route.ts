@@ -1,3 +1,4 @@
+import { env } from "@/env/server";
 import { issueTokens, validateTokenOwnership } from "@/lib/auth";
 import { db } from "@/lib/db/drizzle";
 import { users_table } from "@/lib/db/schema";
@@ -44,22 +45,46 @@ export async function GET(req: NextRequest) {
 
     res.cookies.set("access_token", access_token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      path: "/",
+      secure: env.NODE_ENV === "production",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+      sameSite: "lax",
       maxAge: 15 * 60, // 15 minutes
     });
     res.cookies.set("refresh_token", refresh_token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      path: "/",
+      secure: env.NODE_ENV === "production",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
     return res;
   } catch (error) {
     console.error(error);
-    res.cookies.delete("access_token");
-    res.cookies.delete("refresh_token");
+    res.cookies.delete({
+      name: "access_token",
+      path: "/",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+    });
+    res.cookies.delete({
+      name: "refresh_token",
+      path: "/",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+    });
     return res;
   }
 }

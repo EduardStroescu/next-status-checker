@@ -1,3 +1,4 @@
+import { env } from "@/env/server";
 import { issueTokens } from "@/lib/auth";
 import { db } from "@/lib/db/drizzle";
 import { users_table } from "@/lib/db/schema";
@@ -45,14 +46,24 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.redirect(new URL("/", req.url));
     res.cookies.set("access_token", access_token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      path: "/",
+      secure: env.NODE_ENV === "production",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+      sameSite: "lax",
       maxAge: 15 * 60, // 15 minutes
     });
     res.cookies.set("refresh_token", refresh_token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      path: "/",
+      secure: env.NODE_ENV === "production",
+      domain:
+        env.NODE_ENV === "production"
+          ? process.env.VERCEL_PROJECT_PRODUCTION_URL!
+          : undefined,
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
