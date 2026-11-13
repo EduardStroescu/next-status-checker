@@ -4,6 +4,8 @@
 
 # Status Checker | OG Generator
 
+[![Activity scheduler](https://github.com/EduardStroescu/next-status-checker/actions/workflows/supabase-cron-job.yml/badge.svg)](https://github.com/EduardStroescu/next-status-checker/actions/workflows/supabase-cron-job.yml)
+
 ## Introduction
 
 A lightweight project status checker and dynamic image generation tool for developers and teams. It monitors the health of various services—including client-side apps, API backends, and Supabase databases—while also offering a powerful system for generating custom Open Graph (OG) and other image types using HTML, CSS, Tailwind, and satori.
